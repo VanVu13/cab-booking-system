@@ -1,72 +1,133 @@
-# Getting Started with Create React App
+# 🚕 CAB BOOKING SYSTEM
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## 📌 Giới thiệu dự án
+**Cab Booking System** là hệ thống đặt xe trực tuyến, cho phép kết nối **khách hàng (Customer)**, **tài xế (Driver)** và **quản trị viên (Admin)** trên cùng một nền tảng.
 
-## Available Scripts
+Dự án mô phỏng mô hình hoạt động của các ứng dụng gọi xe phổ biến như **Grab** hoặc **Uber**, đồng thời áp dụng các kiến thức về:
+- Phát triển phần mềm
+- Agile / Scrum
+- DevOps
+- Cloud
+- AI (định hướng)
 
-In the project directory, you can run:
+---
 
-### `npm start`
+## 🎯 Mục tiêu dự án
+- Xây dựng hệ thống đặt xe trực tuyến hiện đại, dễ sử dụng  
+- Hỗ trợ khách hàng đặt xe nhanh chóng và tiện lợi  
+- Giúp tài xế quản lý chuyến đi và thu nhập  
+- Cung cấp công cụ quản lý, giám sát cho quản trị viên  
+- Áp dụng các thực hành tốt trong phát triển phần mềm  
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+---
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## 👥 Các đối tượng sử dụng
 
-### `npm test`
+### 🚶 Customer (Khách hàng)
+- Đăng ký, đăng nhập tài khoản  
+- Đặt xe theo vị trí  
+- Theo dõi trạng thái chuyến đi  
+- Xem lịch sử đặt xe  
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### 🚗 Driver (Tài xế)
+- Đăng nhập và bật trạng thái sẵn sàng  
+- Nhận hoặc từ chối chuyến xe  
+- Theo dõi lộ trình  
+- Xem lịch sử chuyến đi và thu nhập  
 
-### `npm run build`
+### 🛠️ Admin (Quản trị viên)
+- Quản lý khách hàng và tài xế  
+- Theo dõi các chuyến xe  
+- Xem báo cáo và thống kê  
+- Cấu hình hệ thống  
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+---
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## ⚙️ Chức năng chính
+- Quản lý người dùng và phân quyền  
+- Đặt xe và phân phối chuyến xe  
+- Theo dõi trạng thái chuyến đi  
+- Quản lý lịch sử giao dịch  
+- Báo cáo và thống kê hệ thống  
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+---
 
-### `npm run eject`
+## 🏗️ Kiến trúc hệ thống (định hướng)
+- **Frontend**: React  
+  - Customer App  
+  - Driver App  
+  - Admin Dashboard  
+- **Backend (định hướng)**: API xử lý nghiệp vụ  
+- **Cơ sở dữ liệu (định hướng)**: Lưu trữ thông tin người dùng và chuyến xe  
+- **DevOps**: GitHub quản lý mã nguồn và làm việc nhóm  
+- **Cloud (định hướng)**: Triển khai hệ thống trên nền tảng cloud  
+- **AI (định hướng)**: Gợi ý tài xế phù hợp dựa trên khoảng cách và đánh giá  
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+---
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## 🤖 Định hướng AI & Cloud
+- **AI**:  
+  - Hỗ trợ ghép tài xế – khách hàng tối ưu theo vị trí và mức độ phù hợp  
+- **Cloud**:  
+  - Đảm bảo khả năng mở rộng  
+  - Truy cập ổn định  
+  - Triển khai linh hoạt  
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+---
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## 📈 Lộ trình phát triển
+- **Giai đoạn 1**: Thiết lập môi trường, công cụ và nền tảng hệ thống  
+- **Giai đoạn 2**: Thiết kế giao diện và phát triển frontend  
+- **Giai đoạn 3**: Tích hợp backend và xử lý nghiệp vụ  
+- **Giai đoạn 4**: Ứng dụng AI, Cloud và tối ưu hệ thống  
 
-## Learn More
+---
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## 🛠️ Công nghệ sử dụng
+- **Frontend**: React (Create React App)  
+- **Ngôn ngữ**: JavaScript (ES6)  
+- **Công cụ phát triển**: Node.js, npm, Visual Studio Code  
+- **Quản lý mã nguồn**: Git & GitHub  
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+---
 
-### Code Splitting
+## ▶️ Hướng dẫn chạy dự án
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+### Cài đặt thư viện
+```bash
+npm install
 
-### Analyzing the Bundle Size
+```
+### Chạy ứng dụng
+```bash
+npm start
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+```
+### Chạy ứng dụng
+```bash
+👉 http://localhost:3000
 
-### Making a Progressive Web App
+```
+## 📚 Mục đích học tập
+- Rèn luyện kỹ năng làm việc nhóm theo Agile / Scrum
+- Thực hành phát triển ứng dụng React
+- Làm quen với DevOps, Cloud và AI ở mức định hướng
+- Xây dựng tư duy thiết kế hệ thống phần mềm
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+---
+## 👨‍💻 Nhóm thực hiện & vai trò
+- Product Owner / Business Analyst
+- Scrum Master
+- Software System Architecture Designer
+- UI/UX Designer
+- Software Engineers
+- DevOps Engineer
+- Cloud Engineer
+- AI Engineer
+- SQA / QC & Tester
 
-### Advanced Configuration
+---
+## ✨ Cab Booking System – Dự án học thuật áp dụng quy trình và công nghệ phát triển phần mềm hiện đại.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+---
 
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
-
-hoangkhanh, tran , trong hieu,ngochieu
