@@ -1,0 +1,45 @@
+{
+  "name": "payment-service",
+  "version": "1.0.0",
+  "description": "Payment microservice for cab booking system",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "nodemon --exec ts-node src/index.ts",
+    "dev:worker": "nodemon --exec ts-node src/workers/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "start:worker": "node dist/workers/index.js",
+    "migrate": "knex migrate:latest --knexfile src/config/database.ts",
+    "migrate:rollback": "knex migrate:rollback --knexfile src/config/database.ts",
+    "migrate:make": "knex migrate:make --knexfile src/config/database.ts"
+  },
+  "keywords": [
+    "payment",
+    "microservice",
+    "stripe",
+    "zalopay"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "kafkajs": "^2.2.4",
+    "knex": "^3.1.0",
+    "pg": "^8.11.3",
+    "pino": "^8.17.2",
+    "pino-pretty": "^10.3.1",
+    "prom-client": "^15.1.0",
+    "stripe": "^14.10.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.6",
+    "@types/uuid": "^9.0.7",
+    "nodemon": "^3.0.2",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.3.3"
+  }
+}
