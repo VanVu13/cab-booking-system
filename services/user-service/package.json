@@ -1,0 +1,40 @@
+{
+    "name": "user-service",
+    "version": "1.0.0",
+    "description": "Microservice for user profile management in CAB Booking System",
+    "main": "src/server.js",
+    "scripts": {
+        "start": "node src/server.js",
+        "dev": "nodemon src/server.js",
+        "test": "jest --coverage",
+        "migrate": "node src/migrations/migrate.js",
+        "seed": "node src/seeders/seed.js"
+    },
+    "keywords": ["microservice", "user", "profile", "cab-booking"],
+    "author": "CAB Booking System Team",
+    "license": "MIT",
+    "dependencies": {
+        "express": "^4.18.2",
+        "mongoose": "^7.6.3",
+        "jsonwebtoken": "^9.0.2",
+        "axios": "^1.6.0",
+        "dotenv": "^16.3.1",
+        "cors": "^2.8.5",
+        "helmet": "^7.0.0",
+        "express-rate-limit": "^6.10.0",
+        "winston": "^3.11.0",
+        "joi": "^17.11.0",
+        "bcryptjs": "^2.4.3",
+        "express-validator": "^7.0.1",
+        "http-status-codes": "^2.3.0"
+    },
+    "devDependencies": {
+        "nodemon": "^3.0.1",
+        "jest": "^29.7.0",
+        "supertest": "^6.3.3",
+        "@types/jest": "^29.5.8"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}
