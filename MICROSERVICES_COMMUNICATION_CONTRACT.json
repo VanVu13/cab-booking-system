@@ -231,7 +231,10 @@
     },
     {
       "service_name": "AI Matching Service",
-      "communication_style": "ASYNCHRONOUS (EVENT CONSUMER/PRODUCER)",
+      "communication_style": "REST (client) + ASYNC (EVENT CONSUMER/PRODUCER)",
+      "dependencies": [
+        "Driver Service"
+      ],
       "public_api": "NONE",
       "event_contract": {
         "events_consumed": [
@@ -245,6 +248,10 @@
     {
       "service_name": "Booking Service",
       "communication_style": "REST (client) + ASYNC (event producer)",
+      "dependencies": [
+        "Pricing Service",
+        "ETA Service"
+      ],
       "rest_api_contracts": [
         {
           "endpoint": "POST /bookings",
@@ -285,6 +292,9 @@
         "events_produced": [
           "ride.created"
         ],
+        "events_consumed": [
+          "ride.assigned"
+        ],
         "schema": {
           "type": "RideCreated",
           "rideId": "r123",
@@ -297,7 +307,8 @@
             "lat": 10.8,
             "lng": 106.7
           },
-          "timestamp": "2025-01-01T10:00:00Z"
+          "timestamp": "2025-01-01T10:00:00Z",
+          "vehicleType": "SEDAN"
         }
       }
     },
@@ -391,7 +402,8 @@
       "producer": "AI Matching Service",
       "consumers": [
         "Ride Service",
-        "Notification Service"
+        "Notification Service",
+        "Booking Service"
       ],
       "payload": {
         "rideId": "string",

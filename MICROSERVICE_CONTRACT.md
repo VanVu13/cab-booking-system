@@ -94,14 +94,18 @@ Tài liệu này mô tả **hợp đồng (contract)** giữa các micro-service
 ### AI Matching Service (PostgreSQL - DB: `cab_matching`)
 - **Trách nhiệm**:
   - Gợi ý/ghép driver phù hợp cho ride (dựa trên vị trí, rating, lịch sử).
-  - Chỉ giao tiếp qua event (consume `ride.created`, produce `ride.assigned`).
+  - **Giao tiếp**: 
+    - Gọi REST API `GET /drivers/nearby` của Driver Service.
+    - Consume `ride.created`, Produce `ride.assigned`.
 - **Bảng chính (PostgreSQL)**:
   - `driver_matching_score`
 
 ### Booking Service (MongoDB - DB: `cab_booking`)
 - **Trách nhiệm**:
   - Tạo và quản lý **booking** (request đặt xe).
+  - Gọi REST API sang **Pricing Service** và **ETA Service** để tính giá/thời gian.
   - Phát event `ride.created` sau khi tạo booking thành công.
+  - Consume `ride.assigned` để cập nhật trạng thái đã tìm thấy tài xế.
 - **Collection chính (MongoDB)**:
   - `bookings`:
     - `_id`
@@ -221,7 +225,8 @@ Tài liệu này mô tả **hợp đồng (contract)** giữa các micro-service
     - `averageRating`, `reviews` (array)
 
 ### AI Matching Service
-- **Không có REST API public**: Chỉ giao tiếp qua event (consume `ride.created`, produce `ride.assigned`).
+- **REST**: Gọi `GET` `/drivers/nearby` của Driver Service.
+- **Event**: Consume `ride.created`, Produce `ride.assigned`.
 
 ### Booking Service
 - **POST** `/bookings`
@@ -298,13 +303,15 @@ Tài liệu này mô tả **hợp đồng (contract)** giữa các micro-service
   - `rideId` (string)
   - `userId` (string)
   - `pickup` (object: lat, lng)
+  - `pickup` (object: lat, lng)
   - `drop` (object: lat, lng)
   - `vehicleType` (string)
+  - `timestamp` (ISO8601)
   - `timestamp` (ISO8601)
 
 ### Message: `ride.assigned`
 - **Producer**: AI Matching Service
-- **Consumer**: Ride Service, Notification Service
+- **Consumer**: Ride Service, Notification Service, **Booking Service**
 - **Payload**:
   - `rideId`, `driverId`, `userId`, `timestamp`
 
@@ -337,8 +344,8 @@ Tài liệu này mô tả **hợp đồng (contract)** giữa các micro-service
 ```
 1. Client → POST /bookings (Booking Service)
 2. Booking Service → phát ride.created
-3. AI Matching Service (consume ride.created) → tìm driver → phát ride.assigned
-4. Ride Service (consume ride.assigned) + Notification (thông báo tài xế)
+3. AI Matching Service (consume ride.created) → tìm driver (call Driver Service) → phát ride.assigned
+4. Ride Service + Notification + Booking Service (consume ride.assigned) → cập nhật trạng thái
 5. Driver → POST /rides/{id}/start (Ride Service)
 6. Driver → POST /rides/{id}/complete (Ride Service)
 7. Ride Service → phát ride.completed
