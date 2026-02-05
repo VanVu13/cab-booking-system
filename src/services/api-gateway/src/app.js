@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const helmet = require('helmet');
+const swaggerUi = require('swagger-ui-express');
+const swaggerDocument = require('./openapi.json');
 const { apiLimiter } = require('./middleware/rateLimit');
 const { setupRoutes } = require('./routes');
 
@@ -43,6 +45,9 @@ app.use((req, res, next) => {
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', service: 'api-gateway' });
 });
+
+// Swagger Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Rate limit only for auth
 app.use('/auth', apiLimiter);
