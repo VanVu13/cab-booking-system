@@ -1,0 +1,45 @@
+.jsx-demo-container {
+  background-color: #f8f9fa;
+  padding: 20px;
+  border-radius: 10px;
+}
+
+.basic-jsx {
+  background-color: #e3f2fd;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.expressions {
+  background-color: #f3e5f5;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.expressions .badge {
+  font-size: 0.9em;
+  padding: 5px 10px;
+}
+
+.conditional-rendering {
+  background-color: #e8f5e9;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.card {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  transition: transform 0.2s ease;
+}
+
+.table {
+  background-color: white;
+}
+
+.alert {
+  border-radius: 6px;
+}

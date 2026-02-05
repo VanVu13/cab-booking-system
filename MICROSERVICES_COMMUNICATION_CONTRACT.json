@@ -1,0 +1,443 @@
+{
+  "project_name": "CAB BOOKING SYSTEM",
+  "contract_type": "Microservices Communication Contracts",
+  "version": "1.0.0",
+  "description": "Machine-readable contract for REST APIs and async events between microservices",
+  "service_contracts": [
+    {
+      "service_name": "Auth Service",
+      "communication_style": "SYNCHRONOUS (REST)",
+      "database": "PostgreSQL (DB: cab_auth)",
+      "rest_api_contracts": [
+        {
+          "endpoint": "POST /auth/register",
+          "request": {
+            "email": "user@example.com",
+            "password": "string",
+            "role": "PASSENGER | DRIVER"
+          },
+          "response": {
+            "userId": "u123",
+            "accessToken": "jwt_token",
+            "refreshToken": "refresh_token"
+          }
+        },
+        {
+          "endpoint": "POST /auth/login",
+          "request": {
+            "email": "user@example.com",
+            "password": "string"
+          },
+          "response": {
+            "userId": "u123",
+            "role": "PASSENGER | DRIVER",
+            "accessToken": "jwt_token",
+            "refreshToken": "refresh_token"
+          }
+        },
+        {
+          "endpoint": "POST /auth/refresh",
+          "request": {
+            "refreshToken": "string"
+          },
+          "response": {
+            "accessToken": "new_jwt_token"
+          }
+        }
+      ]
+    },
+    {
+      "service_name": "User Service",
+      "communication_style": "SYNCHRONOUS (REST)",
+      "database": "PostgreSQL (DB: cab_user)",
+      "rest_api_contracts": [
+        {
+          "endpoint": "GET /users/profile",
+          "headers": {
+            "Authorization": "Bearer <token>"
+          },
+          "response": {
+            "userId": "u123",
+            "name": "Nguyen Van A",
+            "email": "user@example.com",
+            "role": "PASSENGER | DRIVER",
+            "phone": "0901234567"
+          }
+        },
+        {
+          "endpoint": "PATCH /users/profile",
+          "headers": {
+            "Authorization": "Bearer <token>"
+          },
+          "request": {
+            "name": "string",
+            "phone": "string"
+          },
+          "response": {
+            "status": "updated"
+          }
+        }
+      ]
+    },
+    {
+      "service_name": "Pricing Service",
+      "communication_style": "SYNCHRONOUS (REST)",
+      "database": "PostgreSQL (DB: cab_pricing)",
+      "rest_api_contracts": [
+        {
+          "endpoint": "GET /pricing/estimate",
+          "query": {
+            "pickupLat": 10.7,
+            "pickupLng": 106.6,
+            "dropLat": 10.8,
+            "dropLng": 106.7,
+            "vehicleType": "SEDAN | SUV"
+          },
+          "response": {
+            "estimatedPrice": 85000,
+            "currency": "VND",
+            "surgeMultiplier": 1.2,
+            "breakdown": {
+              "base": 15000,
+              "distance": 50000,
+              "time": 20000
+            }
+          }
+        },
+        {
+          "endpoint": "POST /pricing/estimate",
+          "request": {
+            "pickup": {
+              "lat": 10.7,
+              "lng": 106.6
+            },
+            "drop": {
+              "lat": 10.8,
+              "lng": 106.7
+            },
+            "vehicleType": "SEDAN"
+          },
+          "response": {
+            "estimatedPrice": 85000,
+            "currency": "VND",
+            "surgeMultiplier": 1.2
+          }
+        }
+      ]
+    },
+    {
+      "service_name": "ETA Service",
+      "communication_style": "SYNCHRONOUS (REST)",
+      "database": "PostgreSQL (DB: cab_eta)",
+      "rest_api_contracts": [
+        {
+          "endpoint": "POST /eta/estimate",
+          "request": {
+            "pickup": {
+              "lat": 10.7,
+              "lng": 106.6
+            },
+            "drop": {
+              "lat": 10.8,
+              "lng": 106.7
+            }
+          },
+          "response": {
+            "pickupEtaSeconds": 300,
+            "tripEtaSeconds": 900
+          }
+        }
+      ]
+    },
+    {
+      "service_name": "Driver Service",
+      "communication_style": "SYNCHRONOUS (REST + WebSocket)",
+      "rest_api_contracts": [
+        {
+          "endpoint": "POST /drivers/location",
+          "headers": {
+            "Authorization": "Bearer <driver_token>"
+          },
+          "request": {
+            "driverId": "d123",
+            "lat": 10.75,
+            "lng": 106.65
+          },
+          "response": {
+            "status": "location_updated"
+          }
+        },
+        {
+          "endpoint": "GET /drivers/nearby",
+          "query": {
+            "lat": 10.7,
+            "lng": 106.6,
+            "radius": 5000
+          },
+          "response": {
+            "drivers": [
+              {
+                "driverId": "d123",
+                "lat": 10.75,
+                "lng": 106.65,
+                "status": "AVAILABLE"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "service_name": "Review Service",
+      "communication_style": "SYNCHRONOUS (REST)",
+      "database": "PostgreSQL (DB: cab_review)",
+      "rest_api_contracts": [
+        {
+          "endpoint": "POST /reviews",
+          "headers": {
+            "Authorization": "Bearer <token>"
+          },
+          "request": {
+            "rideId": "r123",
+            "rating": 5,
+            "comment": "Tài xế thân thiện"
+          },
+          "response": {
+            "status": "review_submitted"
+          }
+        },
+        {
+          "endpoint": "GET /reviews/driver/{driverId}",
+          "response": {
+            "averageRating": 4.8,
+            "reviews": []
+          }
+        }
+      ]
+    },
+    {
+      "service_name": "Notification Service",
+      "communication_style": "ASYNCHRONOUS (EVENT CONSUMER)",
+      "public_api": "NONE",
+      "event_contract": {
+        "events_consumed": [
+          "ride.assigned",
+          "payment.completed",
+          "payment.failed",
+          "ride.completed",
+          "ride.started"
+        ]
+      }
+    },
+    {
+      "service_name": "AI Matching Service",
+      "communication_style": "ASYNCHRONOUS (EVENT CONSUMER/PRODUCER)",
+      "public_api": "NONE",
+      "event_contract": {
+        "events_consumed": [
+          "ride.created"
+        ],
+        "events_produced": [
+          "ride.assigned"
+        ]
+      }
+    },
+    {
+      "service_name": "Booking Service",
+      "communication_style": "REST (client) + ASYNC (event producer)",
+      "rest_api_contracts": [
+        {
+          "endpoint": "POST /bookings",
+          "headers": {
+            "Authorization": "Bearer <token>"
+          },
+          "request": {
+            "userId": "u123",
+            "pickup": {
+              "lat": 10.7,
+              "lng": 106.6
+            },
+            "drop": {
+              "lat": 10.8,
+              "lng": 106.7
+            },
+            "vehicleType": "SEDAN"
+          },
+          "response": {
+            "bookingId": "b123",
+            "status": "SEARCHING_DRIVER"
+          }
+        },
+        {
+          "endpoint": "GET /bookings/{id}",
+          "headers": {
+            "Authorization": "Bearer <token>"
+          },
+          "response": {
+            "bookingId": "b123",
+            "status": "string",
+            "pickup": {},
+            "drop": {}
+          }
+        }
+      ],
+      "event_contract": {
+        "events_produced": [
+          "ride.created"
+        ],
+        "schema": {
+          "type": "RideCreated",
+          "rideId": "r123",
+          "userId": "u123",
+          "pickup": {
+            "lat": 10.7,
+            "lng": 106.6
+          },
+          "drop": {
+            "lat": 10.8,
+            "lng": 106.7
+          },
+          "timestamp": "2025-01-01T10:00:00Z"
+        }
+      }
+    },
+    {
+      "service_name": "Ride Service",
+      "communication_style": "ASYNC + REST (driver actions)",
+      "rest_api_contracts": [
+        {
+          "endpoint": "POST /rides/{id}/start",
+          "headers": {
+            "Authorization": "Bearer <driver_token>"
+          },
+          "request": {},
+          "response": {
+            "status": "ride_started"
+          }
+        },
+        {
+          "endpoint": "POST /rides/{id}/complete",
+          "headers": {
+            "Authorization": "Bearer <driver_token>"
+          },
+          "request": {
+            "distanceMeters": 5000,
+            "durationSeconds": 900
+          },
+          "response": {
+            "status": "ride_completed"
+          }
+        }
+      ],
+      "event_contract": {
+        "events_consumed": [
+          "ride.assigned"
+        ],
+        "events_produced": [
+          "ride.started",
+          "ride.completed"
+        ]
+      }
+    },
+    {
+      "service_name": "Payment Service",
+      "communication_style": "ASYNC (Saga)",
+      "rest_api_contracts": [
+        {
+          "endpoint": "POST /payments/charge",
+          "request": {
+            "rideId": "r123",
+            "amount": 85000,
+            "paymentMethod": "WALLET | CARD"
+          },
+          "response": {
+            "status": "processing"
+          }
+        }
+      ],
+      "event_contract": {
+        "events_consumed": [
+          "ride.completed"
+        ],
+        "events_produced": [
+          "payment.completed",
+          "payment.failed"
+        ]
+      }
+    }
+  ],
+  "event_schemas": {
+    "ride.created": {
+      "producer": "Booking Service",
+      "consumers": [
+        "AI Matching Service"
+      ],
+      "payload": {
+        "rideId": "string",
+        "userId": "string",
+        "pickup": {
+          "lat": "number",
+          "lng": "number"
+        },
+        "drop": {
+          "lat": "number",
+          "lng": "number"
+        },
+        "timestamp": "ISO8601",
+        "vehicleType": "string"
+      }
+    },
+    "ride.assigned": {
+      "producer": "AI Matching Service",
+      "consumers": [
+        "Ride Service",
+        "Notification Service"
+      ],
+      "payload": {
+        "rideId": "string",
+        "driverId": "string",
+        "userId": "string",
+        "timestamp": "ISO8601"
+      }
+    },
+    "ride.completed": {
+      "producer": "Ride Service",
+      "consumers": [
+        "Payment Service",
+        "Notification Service"
+      ],
+      "payload": {
+        "rideId": "string",
+        "finalPrice": "number",
+        "distanceMeters": "number",
+        "durationSeconds": "number",
+        "completedAt": "ISO8601"
+      }
+    },
+    "payment.completed": {
+      "producer": "Payment Service",
+      "consumers": [
+        "Notification Service"
+      ],
+      "payload": {
+        "paymentId": "string",
+        "rideId": "string",
+        "amount": "number",
+        "status": "SUCCEEDED"
+      }
+    },
+    "payment.failed": {
+      "producer": "Payment Service",
+      "consumers": [
+        "Notification Service"
+      ],
+      "payload": {
+        "paymentId": "string",
+        "rideId": "string",
+        "amount": "number",
+        "status": "FAILED",
+        "reason": "string"
+      }
+    }
+  }
+}

@@ -1,0 +1,165 @@
+services:
+  # PostgreSQL for Auth Service
+  postgres-auth:
+    image: postgres:15
+    container_name: cab_postgres_auth
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      POSTGRES_DB: cab_auth
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_auth_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cab-network
+
+  # PostgreSQL for User Service
+  postgres-user:
+    image: postgres:15
+    container_name: cab_postgres_user
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      POSTGRES_DB: cab_user
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_user_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cab-network
+
+  # Redis for Session/Token Storage
+  redis:
+    image: redis:7-alpine
+    container_name: cab_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cab-network
+
+  # Auth Service
+  auth-service:
+    build:
+      context: ./src/services/auth-service
+      dockerfile: Dockerfile
+    container_name: auth_service
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "3001:3001"
+    environment:
+      DB_HOST: postgres-auth
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres_password
+      DB_DATABASE: cab_auth
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: supersecret
+      JWT_ACCESS_EXPIRY: 15m
+      JWT_REFRESH_EXPIRY: 7d
+      PORT: 3001
+      NODE_ENV: development
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - cab-network
+
+  # User Service
+  user-service:
+    build:
+      context: ./src/services/user-service
+      dockerfile: Dockerfile
+    container_name: user_service
+    depends_on:
+      postgres-user:
+        condition: service_healthy
+    ports:
+      - "3002:3002"
+    environment:
+      DB_HOST: postgres-user
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres_password
+      DB_DATABASE: cab_user
+      PORT: 3002
+      NODE_ENV: development
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - cab-network
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./src/services/api-gateway
+      dockerfile: Dockerfile
+    container_name: api_gateway
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      NODE_ENV: development
+      # Service URLs - use container names
+      AUTH_SERVICE_URL: http://auth-service:3001
+      USER_SERVICE_URL: http://user-service:3002
+      PRICING_SERVICE_URL: http://pricing-service:3003
+      ETA_SERVICE_URL: http://eta-service:3004
+      MATCHING_SERVICE_URL: http://matching-service:3005
+      BOOKING_SERVICE_URL: http://booking-service:3006
+      RIDE_SERVICE_URL: http://ride-service:3007
+      PAYMENT_SERVICE_URL: http://payment-service:3008
+      CORS_ORIGIN: "*"
+      JWT_SECRET: supersecret
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - cab-network
+
+volumes:
+  postgres_auth_data:
+    driver: local
+  postgres_user_data:
+    driver: local
+
+networks:
+  cab-network:
+    driver: bridge
