@@ -4,7 +4,7 @@ const morgan = require('morgan');
 const helmet = require('helmet');
 const swaggerUi = require('swagger-ui-express');
 const swaggerDocument = require('./openapi.json');
-const { apiLimiter } = require('./middleware/rateLimit');
+const { apiLimiter, bookingLimiter } = require('./middleware/rateLimit');
 const { setupRoutes } = require('./routes');
 
 const app = express();
@@ -21,12 +21,19 @@ app.use((req, res, next) => {
 app.use(helmet());
 
 // Body parsing (IMPORTANT)
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
-// CORS
+// Middleware to catch 413 error (Payload too large)
+app.use((err, req, res, next) => {
+    if (err.type === 'entity.too.large') {
+        return res.status(413).json({ error: 'Payload too large' });
+    }
+    next(err);
+});
+// CORS - Allow ALL for debugging
 app.use(cors({
-    origin: ['http://localhost:5173'],
+    origin: true, // Reflects the request origin
     credentials: true
 }));
 
@@ -49,11 +56,13 @@ app.get('/health', (req, res) => {
 // Swagger Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-// Rate limit only for auth
-app.use('/auth', apiLimiter);
+// Rate limiting - global + route-specific
+app.use(apiLimiter);                  // Global: 100 req/15min per IP
+app.use('/bookings', bookingLimiter); // Booking: 30 req/min per IP
 
 // Routes
-setupRoutes(app);
+const proxies = setupRoutes(app);
+app.proxies = proxies;
 
 // 404
 app.use((req, res) => {

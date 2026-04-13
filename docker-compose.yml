@@ -39,6 +39,66 @@ services:
     networks:
       - cab-network
 
+  # PostgreSQL for Driver Service
+  postgres-driver:
+    image: postgres:15
+    container_name: cab_postgres_driver
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      POSTGRES_DB: cab_driver
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_driver_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cab-network
+
+  # PostgreSQL for Payment Service
+  postgres-payment:
+    image: postgres:15
+    container_name: cab_postgres_payment
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      POSTGRES_DB: cab_payment
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_payment_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cab-network
+
+  # PostgreSQL for Review Service
+  postgres-review:
+    image: postgres:15
+    container_name: cab_postgres_review
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      POSTGRES_DB: cab_review
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_review_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cab-network
+
   # Redis for Session/Token Storage
   redis:
     image: redis:7-alpine
@@ -53,12 +113,131 @@ services:
     networks:
       - cab-network
 
+  # MongoDB for Booking Service
+  mongo-booking:
+    image: mongo:6
+    container_name: cab_mongo_booking
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_booking_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks:
+      - cab-network
+
+  # MongoDB for Ride Service
+  mongo-ride:
+    image: mongo:6
+    container_name: cab_mongo_ride
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo_ride_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks:
+      - cab-network
+
+  # MongoDB for Notification Service
+  mongo-notification:
+    image: mongo:6
+    container_name: cab_mongo_notification
+    ports:
+      - "27019:27017"
+    volumes:
+      - mongo_notification_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks:
+      - cab-network
+
+  # RabbitMQ for Event-Driven Communication
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: cab_rabbitmq
+    hostname: rabbitmq
+    restart: unless-stopped
+
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_ERLANG_COOKIE: cab_booking_secret_cookie
+
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+    networks:
+      - cab-network
+
+
+
+  # Pricing Service
+  pricing-service:
+    build:
+      context: ./src/services/pricing-service
+      dockerfile: Dockerfile
+    container_name: pricing_service
+    volumes:
+      - ./src/services/pricing-service:/app
+      - /app/node_modules
+    ports:
+      - "3003:3003"
+    environment:
+      PORT: 3003
+      NODE_ENV: development
+      # Bảng giá (có thể thay đổi không cần sửa code)
+      SEDAN_BASE_PRICE: 15000
+      SEDAN_PRICE_PER_KM: 10000
+      SEDAN_PRICE_PER_MIN: 500
+      SUV_BASE_PRICE: 20000
+      SUV_PRICE_PER_KM: 15000
+      SUV_PRICE_PER_MIN: 700
+      BIKE_BASE_PRICE: 5000
+      BIKE_PRICE_PER_KM: 5000
+      BIKE_PRICE_PER_MIN: 200
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3003/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - cab-network
+
   # Auth Service
   auth-service:
     build:
       context: ./src/services/auth-service
       dockerfile: Dockerfile
     container_name: auth_service
+    volumes:
+      - ./src/services/auth-service:/app
+      - /app/node_modules
     depends_on:
       postgres-auth:
         condition: service_healthy
@@ -74,11 +253,12 @@ services:
       DB_DATABASE: cab_auth
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      JWT_SECRET: supersecret
+      JWT_SECRET: ${JWT_SECRET:-changeme_in_production}
       JWT_ACCESS_EXPIRY: 15m
       JWT_REFRESH_EXPIRY: 7d
       PORT: 3001
       NODE_ENV: development
+      DRIVER_SERVICE_URL: http://driver-service:3004
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s
@@ -95,6 +275,9 @@ services:
       context: ./src/services/user-service
       dockerfile: Dockerfile
     container_name: user_service
+    volumes:
+      - ./src/services/user-service:/app
+      - /app/node_modules
     depends_on:
       postgres-user:
         condition: service_healthy
@@ -117,16 +300,286 @@ services:
     networks:
       - cab-network
 
+  # Booking Service
+  booking-service:
+    build:
+      context: ./src/services/booking-service
+      dockerfile: Dockerfile
+    container_name: booking_service
+    # volumes:
+    #   - ./src/services/booking-service:/app
+    #   - /app/node_modules
+    depends_on:
+      mongo-booking:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "3006:3006"
+    environment:
+      PORT: 3006
+      NODE_ENV: development
+      MONGODB_URI: mongodb://mongo-booking:27017/cab_booking
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      PRICING_SERVICE_URL: http://pricing-service:3003
+      ETA_SERVICE_URL: http://eta-service:3012
+      MOCK_DEPENDENCIES: "false"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3006/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - cab-network
+
+  # AI Matching Service
+  ai-matching-service:
+    build:
+      context: ./src/services/ai-matching-service
+      dockerfile: Dockerfile
+    container_name: ai_matching_service
+    volumes:
+      - ./src/services/ai-matching-service:/app
+      - /app/node_modules
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      PORT: 3005
+      NODE_ENV: development
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      DRIVER_SERVICE_URL: http://driver-service:3004
+      MOCK_DEPENDENCIES: "false"
+    restart: unless-stopped
+    networks:
+      - cab-network
+
+  # Ride Service
+  ride-service:
+    build:
+      context: ./src/services/ride-service
+      dockerfile: Dockerfile
+    container_name: ride_service
+    volumes:
+      - ./src/services/ride-service:/app
+      - /app/node_modules
+    depends_on:
+      mongo-ride:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "3007:3007"
+    environment:
+      PORT: 3007
+      NODE_ENV: development
+      MONGODB_URI: mongodb://mongo-ride:27017/cab_ride
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      USER_SERVICE_URL: http://user-service:3002
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3007/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - cab-network
+
+  # Payment Service
+  payment-service:
+    build:
+      context: ./src/services/payment-service
+      dockerfile: Dockerfile
+    container_name: payment_service
+    volumes:
+      - ./src/services/payment-service:/app
+      - /app/node_modules
+    depends_on:
+      postgres-payment:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "3008:3008"
+    environment:
+      PORT: 3008
+      NODE_ENV: development
+      DB_HOST: postgres-payment
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres_password
+      DB_DATABASE: cab_payment
+      RABBITMQ_URL: amqp://rabbitmq:5672
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3008/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - cab-network
+
+  # Review Service
+  review-service:
+    build:
+      context: ./src/services/review-service
+      dockerfile: Dockerfile
+    container_name: review_service
+    volumes:
+      - ./src/services/review-service:/app
+      - /app/node_modules
+    depends_on:
+      postgres-review:
+        condition: service_healthy
+    ports:
+      - "3010:3010"
+    environment:
+      PORT: 3010
+      NODE_ENV: development
+      DB_HOST: postgres-review
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres_password
+      DB_DATABASE: cab_review
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3010/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - cab-network
+
+  # Notification Service
+  notification-service:
+    build:
+      context: ./src/services/notification-service
+      dockerfile: Dockerfile
+    container_name: notification_service
+    volumes:
+      - ./src/services/notification-service:/app
+      - /app/node_modules
+    depends_on:
+      mongo-notification:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "3009:3009"
+    environment:
+      PORT: 3009
+      NODE_ENV: development
+      MONGODB_URI: mongodb://mongo-notification:27017/cab_notification
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      JWT_SECRET: ${JWT_SECRET:-changeme_in_production}
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3009/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - cab-network
+
+  # Driver Service
+  driver-service:
+    build:
+      context: ./src/services/driver-service
+      dockerfile: Dockerfile
+    container_name: driver_service
+    # volumes:
+    #   - ./src/services/driver-service:/app
+    #   - /app/node_modules
+    depends_on:
+      postgres-driver:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      PORT: 3004
+      NODE_ENV: development
+      DB_HOST: postgres-driver
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres_password
+      DB_DATABASE: cab_driver
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      USER_SERVICE_URL: http://user-service:3002
+    ports:
+      - "3004:3004"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3004/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - cab-network
+
+  # ETA Service (Route & ETA Calculation)
+  eta-service:
+    build:
+      context: ./src/services/eta-service
+      dockerfile: Dockerfile
+    container_name: eta_service
+    ports:
+      - "3012:3012"
+    environment:
+      PORT: 3012
+      NODE_ENV: development
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3012/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - cab-network
+
+  # Tracking Service (Socket.IO)
+  tracking-service:
+    build:
+      context: .
+      dockerfile: ./src/services/tracking-service/Dockerfile
+    container_name: tracking_service
+    # volumes:
+    #   - ./src/services/tracking-service:/app
+    #   - /app/node_modules
+    ports:
+      - "3011:3011"
+    environment:
+      PORT: 3011
+      NODE_ENV: development
+      RIDE_SERVICE_URL: http://ride-service:3007
+      DRIVER_SERVICE_URL: http://driver-service:3004
+      ETA_SERVICE_URL: http://eta-service:3012
+    restart: unless-stopped
+    networks:
+      - cab-network
+
   # API Gateway
   api-gateway:
     build:
       context: ./src/services/api-gateway
       dockerfile: Dockerfile
     container_name: api_gateway
+    volumes:
+      - ./src/services/api-gateway:/app
+      - /app/node_modules
     depends_on:
       auth-service:
         condition: service_healthy
       user-service:
+        condition: service_healthy
+      booking-service:
         condition: service_healthy
     ports:
       - "3000:3000"
@@ -137,13 +590,17 @@ services:
       AUTH_SERVICE_URL: http://auth-service:3001
       USER_SERVICE_URL: http://user-service:3002
       PRICING_SERVICE_URL: http://pricing-service:3003
-      ETA_SERVICE_URL: http://eta-service:3004
-      MATCHING_SERVICE_URL: http://matching-service:3005
+      DRIVER_SERVICE_URL: http://driver-service:3004
+      MATCHING_SERVICE_URL: http://ai-matching-service:3005
       BOOKING_SERVICE_URL: http://booking-service:3006
       RIDE_SERVICE_URL: http://ride-service:3007
       PAYMENT_SERVICE_URL: http://payment-service:3008
+      NOTIFICATION_SERVICE_URL: http://notification-service:3009
+      REVIEW_SERVICE_URL: http://review-service:3010
+      TRACKING_SERVICE_URL: http://tracking-service:3011
+      ETA_SERVICE_URL: http://eta-service:3012
       CORS_ORIGIN: "*"
-      JWT_SECRET: supersecret
+      JWT_SECRET: ${JWT_SECRET:-changeme_in_production}
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s
@@ -158,6 +615,20 @@ volumes:
   postgres_auth_data:
     driver: local
   postgres_user_data:
+    driver: local
+  mongo_booking_data:
+    driver: local
+  postgres_driver_data:
+    driver: local
+  mongo_ride_data:
+    driver: local
+  postgres_payment_data:
+    driver: local
+  postgres_review_data:
+    driver: local
+  mongo_notification_data:
+    driver: local
+  rabbitmq_data:
     driver: local
 
 networks:

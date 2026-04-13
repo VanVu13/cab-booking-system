@@ -1,0 +1,509 @@
+{
+    "info": {
+        "_postman_id": "aa123b37-25e4-41da-a72e-83186121404e",
+        "name": "Cab Booking System - Test Cases",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Level 1 - Basic Flow",
+            "item": [
+                {
+                    "name": "Test 1 - Register thành công",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"email\": \"customer1@test.com\", \"password\": \"password123\", \"role\": \"PASSENGER\"}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/auth/register",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "register"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Test 2 - Login trả JWT hợp lệ",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "pm.environment.set(\"access_token\", jsonData.accessToken);",
+                                    "pm.environment.set(\"refresh_token\", jsonData.refreshToken);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"email\": \"customer1@test.com\", \"password\": \"password123\"}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/auth/login",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "login"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Test 3 - Create Booking hợp lệ",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "pm.environment.set(\"booking_id\", jsonData.bookingId);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"pickup\": {\"lat\": 10.762622, \"lng\": 106.660172}, \"drop\": {\"lat\": 10.776889, \"lng\": 106.700806}, \"vehicleType\": \"SEDAN\", \"paymentMethod\": \"CASH\"}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/bookings",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "bookings"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Test 4 - Get Bookings",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/bookings",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "bookings"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Test 5 & 13 - Driver ONLINE/OFFLINE",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{driver_access_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"status\": \"ONLINE\"}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/drivers/status",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "drivers",
+                                "status"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Test 6 - Get specific booking (Status ban đầu)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/bookings/{{booking_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "bookings",
+                                "{{booking_id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Test 10 - Logout",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"refreshToken\": \"{{refresh_token}}\"}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/auth/logout",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "logout"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Level 2 - Validation & Edge Cases",
+            "item": [
+                {
+                    "name": "Test 11 - Thiếu pickup",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"drop\": {\"lat\": 10.776889, \"lng\": 106.700806}, \"vehicleType\": \"SEDAN\"}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/bookings",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "bookings"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Test 12 - Sai kiểu lat/lng",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"pickup\": {\"lat\": \"abc\", \"lng\": 106.660172}, \"drop\": {\"lat\": 10.776889, \"lng\": 106.700806}}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/bookings",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "bookings"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Test 14 - Invalid PaymentMethod",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"pickup\": {\"lat\": 10.762622, \"lng\": 106.660172}, \"drop\": {\"lat\": 10.776889, \"lng\": 106.700806}, \"paymentMethod\": \"CRYPTO\"}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/bookings",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "bookings"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Test 15 - Distance = 0",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"pickup\": {\"lat\": 10.762622, \"lng\": 106.660172}, \"drop\": {\"lat\": 10.762622, \"lng\": 106.660172}}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/bookings",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "bookings"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Test 17 - Fraud thiếu field / Payload rỗng",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{ \"data\" : \"spam\" }"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/bookings",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "bookings"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Test 18 - Token hết hạn",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer invalid_expired_token_mock_here"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"pickup\": {\"lat\": 10.762622, \"lng\": 106.660172}, \"drop\": {\"lat\": 10.776889, \"lng\": 106.700806}, \"vehicleType\": \"SEDAN\"}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/bookings",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "bookings"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Test 19 - Duplicate Booking (Idempotency)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            },
+                            {
+                                "key": "idempotency-key",
+                                "value": "1234abcd-same-duplicate-key"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"pickup\": {\"lat\": 10.762622, \"lng\": 106.660172}, \"drop\": {\"lat\": 10.776889, \"lng\": 106.700806}, \"vehicleType\": \"SEDAN\"}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/bookings",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "bookings"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Test 20 - Payload quá lớn 413",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\"pickup\": {\"lat\": 10.762622, \"lng\": 106.660172}, \"drop\": {\"lat\": 10.776889, \"lng\": 106.700806}, \"notes\": \"chuỗi_rất_rất_dài_hơn_100KB\"}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/bookings",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "bookings"
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ],
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    ""
+                ]
+            }
+        },
+        {
+            "listen": "test",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    ""
+                ]
+            }
+        }
+    ],
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:3000",
+            "type": "string"
+        },
+        {
+            "key": "access_token",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "refresh_token",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "driver_access_token",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "booking_id",
+            "value": "",
+            "type": "string"
+        }
+    ]
+}

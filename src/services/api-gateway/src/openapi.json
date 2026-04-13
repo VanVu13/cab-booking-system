@@ -225,6 +225,14 @@
                                     },
                                     "phone": {
                                         "type": "string"
+                                    },
+                                    "licenseNumber": {
+                                        "type": "string",
+                                        "description": "Only for DRIVER"
+                                    },
+                                    "vehicleDetails": {
+                                        "type": "object",
+                                        "description": "Only for DRIVER"
                                     }
                                 }
                             }
@@ -261,41 +269,101 @@
                         "name": "pickupLat",
                         "in": "query",
                         "schema": {
-                            "type": "number"
+                            "type": "number",
+                            "example": 10.7
                         }
                     },
                     {
                         "name": "pickupLng",
                         "in": "query",
                         "schema": {
-                            "type": "number"
+                            "type": "number",
+                            "example": 106.6
                         }
                     },
                     {
                         "name": "dropLat",
                         "in": "query",
                         "schema": {
-                            "type": "number"
+                            "type": "number",
+                            "example": 10.8
                         }
                     },
                     {
                         "name": "dropLng",
                         "in": "query",
                         "schema": {
-                            "type": "number"
+                            "type": "number",
+                            "example": 106.7
                         }
                     },
                     {
                         "name": "vehicleType",
                         "in": "query",
                         "schema": {
-                            "type": "string"
+                            "type": "string",
+                            "example": "SEDAN"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Estimate details"
+                        "description": "Estimate details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "estimatedPrice": {
+                                            "type": "number",
+                                            "example": 85000
+                                        },
+                                        "currency": {
+                                            "type": "string",
+                                            "example": "VND"
+                                        },
+                                        "surgeMultiplier": {
+                                            "type": "number",
+                                            "example": 1.2
+                                        },
+                                        "breakdown": {
+                                            "type": "object",
+                                            "properties": {
+                                                "base": {
+                                                    "type": "number",
+                                                    "example": 15000
+                                                },
+                                                "distance": {
+                                                    "type": "number",
+                                                    "example": 50000
+                                                },
+                                                "time": {
+                                                    "type": "number",
+                                                    "example": 20000
+                                                }
+                                            }
+                                        },
+                                        "details": {
+                                            "type": "object",
+                                            "properties": {
+                                                "distanceKm": {
+                                                    "type": "number",
+                                                    "example": 5.2
+                                                },
+                                                "estimatedMinutes": {
+                                                    "type": "number",
+                                                    "example": 10
+                                                },
+                                                "vehicleType": {
+                                                    "type": "string",
+                                                    "example": "SEDAN"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             },
@@ -343,29 +411,67 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Estimate details"
+                        "description": "Estimate details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "estimatedPrice": {
+                                            "type": "number",
+                                            "example": 85000
+                                        },
+                                        "currency": {
+                                            "type": "string",
+                                            "example": "VND"
+                                        },
+                                        "surgeMultiplier": {
+                                            "type": "number",
+                                            "example": 1.2
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
         },
-        "/eta/estimate": {
+        "/reviews": {
             "post": {
                 "tags": [
-                    "ETA Service"
+                    "Review Service"
                 ],
-                "summary": "Get ETA estimate",
+                "summary": "Submit a review",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
                 "requestBody": {
                     "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
                                 "type": "object",
+                                "required": [
+                                    "rideId",
+                                    "rating"
+                                ],
                                 "properties": {
-                                    "pickup": {
-                                        "type": "object"
+                                    "rideId": {
+                                        "type": "string",
+                                        "example": "r123"
                                     },
-                                    "drop": {
-                                        "type": "object"
+                                    "rating": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 5,
+                                        "example": 5
+                                    },
+                                    "comment": {
+                                        "type": "string",
+                                        "example": "Tài xế thân thiện"
                                     }
                                 }
                             }
@@ -374,7 +480,62 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "ETA details"
+                        "description": "Review submitted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "review_submitted"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/reviews/driver/{driverId}": {
+            "get": {
+                "tags": [
+                    "Review Service"
+                ],
+                "summary": "Get reviews for a driver",
+                "parameters": [
+                    {
+                        "name": "driverId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Driver reviews",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "averageRating": {
+                                            "type": "number",
+                                            "example": 4.8
+                                        },
+                                        "reviews": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -397,9 +558,6 @@
                             "schema": {
                                 "type": "object",
                                 "properties": {
-                                    "driverId": {
-                                        "type": "string"
-                                    },
                                     "lat": {
                                         "type": "number"
                                     },
@@ -455,6 +613,22 @@
             }
         },
         "/bookings": {
+            "get": {
+                "tags": [
+                    "Booking Service"
+                ],
+                "summary": "Get bookings by user",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of bookings"
+                    }
+                }
+            },
             "post": {
                 "tags": [
                     "Booking Service"
@@ -471,18 +645,53 @@
                         "application/json": {
                             "schema": {
                                 "type": "object",
+                                "required": [
+                                    "pickup",
+                                    "drop"
+                                ],
                                 "properties": {
-                                    "userId": {
-                                        "type": "string"
-                                    },
                                     "pickup": {
-                                        "type": "object"
+                                        "type": "object",
+                                        "required": [
+                                            "lat",
+                                            "lng"
+                                        ],
+                                        "properties": {
+                                            "lat": {
+                                                "type": "number",
+                                                "example": 10.7
+                                            },
+                                            "lng": {
+                                                "type": "number",
+                                                "example": 106.6
+                                            }
+                                        }
                                     },
                                     "drop": {
-                                        "type": "object"
+                                        "type": "object",
+                                        "required": [
+                                            "lat",
+                                            "lng"
+                                        ],
+                                        "properties": {
+                                            "lat": {
+                                                "type": "number",
+                                                "example": 10.8
+                                            },
+                                            "lng": {
+                                                "type": "number",
+                                                "example": 106.7
+                                            }
+                                        }
                                     },
                                     "vehicleType": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "enum": [
+                                            "SEDAN",
+                                            "SUV",
+                                            "BIKE"
+                                        ],
+                                        "example": "SEDAN"
                                     }
                                 }
                             }
@@ -491,7 +700,43 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "Booking created"
+                        "description": "Booking created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "bookingId": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "CREATED",
+                                                "SEARCHING_DRIVER",
+                                                "DRIVER_ASSIGNED",
+                                                "IN_PROGRESS",
+                                                "COMPLETED",
+                                                "CANCELLED",
+                                                "MATCH_FAILED"
+                                            ]
+                                        },
+                                        "estimatedPrice": {
+                                            "type": "number"
+                                        },
+                                        "currency": {
+                                            "type": "string"
+                                        },
+                                        "pickupEtaSeconds": {
+                                            "type": "number"
+                                        },
+                                        "tripEtaSeconds": {
+                                            "type": "number"
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -520,6 +765,60 @@
                 "responses": {
                     "200": {
                         "description": "Booking details"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Booking Service"
+                ],
+                "summary": "Cancel booking",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Booking cancelled"
+                    }
+                }
+            }
+        },
+        "/rides/{id}": {
+            "get": {
+                "tags": [
+                    "Ride Service"
+                ],
+                "summary": "Get ride details",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ride details"
                     }
                 }
             }
@@ -598,6 +897,80 @@
                 }
             }
         },
+        "/notifications": {
+            "get": {
+                "tags": [
+                    "Notification Service"
+                ],
+                "summary": "Get all notifications",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of notifications"
+                    }
+                }
+            }
+        },
+        "/notifications/{id}": {
+            "get": {
+                "tags": [
+                    "Notification Service"
+                ],
+                "summary": "Get notification by ID",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notification details"
+                    }
+                }
+            }
+        },
+        "/notifications/{id}/read": {
+            "patch": {
+                "tags": [
+                    "Notification Service"
+                ],
+                "summary": "Mark notification as read",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notification marked as read"
+                    }
+                }
+            }
+        },
         "/payments/charge": {
             "post": {
                 "tags": [
@@ -628,68 +1001,6 @@
                 "responses": {
                     "200": {
                         "description": "Payment processing"
-                    }
-                }
-            }
-        },
-        "/reviews": {
-            "post": {
-                "tags": [
-                    "Review Service"
-                ],
-                "summary": "Submit review",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "rideId": {
-                                        "type": "string"
-                                    },
-                                    "rating": {
-                                        "type": "number"
-                                    },
-                                    "comment": {
-                                        "type": "string"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Review submitted"
-                    }
-                }
-            }
-        },
-        "/reviews/driver/{driverId}": {
-            "get": {
-                "tags": [
-                    "Review Service"
-                ],
-                "summary": "Get driver reviews",
-                "parameters": [
-                    {
-                        "name": "driverId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Review data"
                     }
                 }
             }

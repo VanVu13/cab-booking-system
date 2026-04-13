@@ -16,6 +16,25 @@ async function startServer() {
         await sequelize.sync({ alter: false });
         console.log('✓ Database models synchronized');
 
+        // Seed default ADMIN user
+        const User = require('./models/User');
+        const { hashPassword } = require('./utils/password');
+        const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
+        const existingAdmin = await User.findOne({ where: { email: adminEmail } });
+
+        if (!existingAdmin) {
+            const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+            const password_hash = await hashPassword(adminPassword);
+            await User.create({
+                email: adminEmail,
+                password_hash,
+                name: 'System Admin',
+                role: 'ADMIN',
+                status: 'ACTIVE'
+            });
+            console.log(`✓ Default admin created: ${adminEmail}`);
+        }
+
         // Start server
         const server = app.listen(PORT, () => {
             console.log(`✓ Auth Service running on port ${PORT}`);

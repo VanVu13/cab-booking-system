@@ -19,6 +19,10 @@ User.init(
                 isEmail: true
             }
         },
+        name: {
+            type: DataTypes.STRING(255),
+            allowNull: true
+        },
         password_hash: {
             type: DataTypes.STRING(255),
             allowNull: false
@@ -29,7 +33,12 @@ User.init(
             defaultValue: 'PASSENGER'
         },
         status: {
-            type: DataTypes.ENUM('ACTIVE', 'BLOCKED'),
+            // ACTIVE: Can login (Passenger/Admin default, Driver after approval)
+            // BLOCKED: Permanently banned
+            // PENDING_APPROVAL: New driver waiting for admin review
+            // REJECTED: Driver application denied
+            // SUSPENDED: Temporarily disabled
+            type: DataTypes.ENUM('ACTIVE', 'BLOCKED', 'PENDING_APPROVAL', 'REJECTED', 'SUSPENDED'),
             allowNull: false,
             defaultValue: 'ACTIVE'
         }

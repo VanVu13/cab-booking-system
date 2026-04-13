@@ -19,17 +19,17 @@ function getExpiryInSeconds(expiryStr) {
 
 const REFRESH_TTL = getExpiryInSeconds(REFRESH_EXPIRY);
 
-function generateAccessToken(userId, role, email) {
+function generateAccessToken(userId, role, email, name) {
     return jwt.sign(
-        { userId, role, email, type: 'access' },
+        { userId, sub: userId, role, email, name, type: 'access' },
         JWT_SECRET,
         { expiresIn: ACCESS_EXPIRY }
     );
 }
 
-function generateRefreshToken(userId, role, email) {
+function generateRefreshToken(userId, role, email, name) {
     return jwt.sign(
-        { userId, role, email, type: 'refresh' },
+        { userId, sub: userId, role, email, name, type: 'refresh' },
         JWT_SECRET,
         { expiresIn: REFRESH_EXPIRY }
     );

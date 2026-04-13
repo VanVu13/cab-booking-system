@@ -6,9 +6,10 @@ async function createUsersAuthTable() {
       CREATE TABLE IF NOT EXISTS users_auth (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         email VARCHAR(255) NOT NULL UNIQUE,
+        name VARCHAR(255),
         password_hash VARCHAR(255) NOT NULL,
-        role VARCHAR(20) NOT NULL DEFAULT 'USER' CHECK (role IN ('USER', 'DRIVER', 'ADMIN')),
-        status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'BLOCKED')),
+        role VARCHAR(20) NOT NULL DEFAULT 'PASSENGER' CHECK (role IN ('PASSENGER', 'DRIVER', 'ADMIN')),
+        status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'BLOCKED', 'PENDING_APPROVAL', 'REJECTED', 'SUSPENDED')),
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
@@ -25,10 +26,22 @@ async function createUsersAuthTable() {
     }
 }
 
+async function addNameColumn() {
+    try {
+        await sequelize.query(`
+            ALTER TABLE users_auth ADD COLUMN IF NOT EXISTS name VARCHAR(255);
+        `);
+        console.log('✓ Migration: name column check/added successfully');
+    } catch (error) {
+        console.error('✗ Migration addNameColumn failed:', error.message);
+    }
+}
+
 async function runMigrations() {
     try {
         console.log('Running migrations...');
         await createUsersAuthTable();
+        await addNameColumn();
         console.log('All migrations completed successfully');
         process.exit(0);
     } catch (error) {

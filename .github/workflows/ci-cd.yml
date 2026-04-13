@@ -1,0 +1,481 @@
+# =============================================================================
+# CI/CD Pipeline for Cab Booking System (Microservices)
+# =============================================================================
+# Trigger: Push to main branch
+# Jobs: detect-changes → test → build-push → deploy
+# Strategy: Only build/deploy services that have changed (path filter)
+# =============================================================================
+
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs for the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Environment variables shared across all jobs
+# ─────────────────────────────────────────────────────────────────────────────
+env:
+  DOCKER_REGISTRY: docker.io
+  DOCKER_NAMESPACE: ${{ secrets.DOCKER_USERNAME }}
+  IMAGE_TAG: ${{ github.sha }}
+  NODE_VERSION: "18"
+
+jobs:
+  # ===========================================================================
+  # JOB 1: Detect which services have changed
+  # ===========================================================================
+  detect-changes:
+    name: "🔍 Detect Changes"
+    runs-on: ubuntu-latest
+    outputs:
+      # Backend services
+      api-gateway: ${{ steps.filter.outputs.api-gateway }}
+      auth-service: ${{ steps.filter.outputs.auth-service }}
+      user-service: ${{ steps.filter.outputs.user-service }}
+      booking-service: ${{ steps.filter.outputs.booking-service }}
+      driver-service: ${{ steps.filter.outputs.driver-service }}
+      ride-service: ${{ steps.filter.outputs.ride-service }}
+      payment-service: ${{ steps.filter.outputs.payment-service }}
+      review-service: ${{ steps.filter.outputs.review-service }}
+      notification-service: ${{ steps.filter.outputs.notification-service }}
+      ai-matching-service: ${{ steps.filter.outputs.ai-matching-service }}
+      pricing-service: ${{ steps.filter.outputs.pricing-service }}
+      eta-service: ${{ steps.filter.outputs.eta-service }}
+      tracking-service: ${{ steps.filter.outputs.tracking-service }}
+      # Frontend apps
+      customer-app: ${{ steps.filter.outputs.customer-app }}
+      driver-app: ${{ steps.filter.outputs.driver-app }}
+      admin-dashboard: ${{ steps.filter.outputs.admin-dashboard }}
+      # Infra changes (docker-compose, etc.)
+      infra: ${{ steps.filter.outputs.infra }}
+      # Matrix output for dynamic job
+      services-matrix: ${{ steps.build-matrix.outputs.matrix }}
+      has-changes: ${{ steps.build-matrix.outputs.has-changes }}
+
+    steps:
+      - name: "📥 Checkout code"
+        uses: actions/checkout@v4
+
+      - name: "🔎 Detect file changes with path filters"
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api-gateway:
+              - 'src/services/api-gateway/**'
+            auth-service:
+              - 'src/services/auth-service/**'
+            user-service:
+              - 'src/services/user-service/**'
+            booking-service:
+              - 'src/services/booking-service/**'
+            driver-service:
+              - 'src/services/driver-service/**'
+            ride-service:
+              - 'src/services/ride-service/**'
+            payment-service:
+              - 'src/services/payment-service/**'
+            review-service:
+              - 'src/services/review-service/**'
+            notification-service:
+              - 'src/services/notification-service/**'
+            ai-matching-service:
+              - 'src/services/ai-matching-service/**'
+            pricing-service:
+              - 'src/services/pricing-service/**'
+            eta-service:
+              - 'src/services/eta-service/**'
+            tracking-service:
+              - 'src/services/tracking-service/**'
+            customer-app:
+              - 'src/apps/customer-app/**'
+            driver-app:
+              - 'src/apps/driver-app/**'
+            admin-dashboard:
+              - 'src/apps/admin-dashboard/**'
+            infra:
+              - 'docker-compose.yml'
+              - 'docker-compose.prod.yml'
+              - '.github/workflows/**'
+
+      - name: "📋 Build dynamic matrix from changed services"
+        id: build-matrix
+        run: |
+          # Build a JSON array of changed services for the matrix strategy
+          SERVICES=()
+
+          # Backend services - standard context (Dockerfile in service dir)
+          if [ "${{ steps.filter.outputs.api-gateway }}" == "true" ]; then
+            SERVICES+=('{"name":"api-gateway","path":"src/services/api-gateway","context":"src/services/api-gateway","dockerfile":"Dockerfile","type":"backend"}')
+          fi
+          if [ "${{ steps.filter.outputs.auth-service }}" == "true" ]; then
+            SERVICES+=('{"name":"auth-service","path":"src/services/auth-service","context":"src/services/auth-service","dockerfile":"Dockerfile","type":"backend"}')
+          fi
+          if [ "${{ steps.filter.outputs.user-service }}" == "true" ]; then
+            SERVICES+=('{"name":"user-service","path":"src/services/user-service","context":"src/services/user-service","dockerfile":"Dockerfile","type":"backend"}')
+          fi
+          if [ "${{ steps.filter.outputs.booking-service }}" == "true" ]; then
+            SERVICES+=('{"name":"booking-service","path":"src/services/booking-service","context":"src/services/booking-service","dockerfile":"Dockerfile","type":"backend"}')
+          fi
+          if [ "${{ steps.filter.outputs.driver-service }}" == "true" ]; then
+            SERVICES+=('{"name":"driver-service","path":"src/services/driver-service","context":"src/services/driver-service","dockerfile":"Dockerfile","type":"backend"}')
+          fi
+          if [ "${{ steps.filter.outputs.ride-service }}" == "true" ]; then
+            SERVICES+=('{"name":"ride-service","path":"src/services/ride-service","context":"src/services/ride-service","dockerfile":"Dockerfile","type":"backend"}')
+          fi
+          if [ "${{ steps.filter.outputs.payment-service }}" == "true" ]; then
+            SERVICES+=('{"name":"payment-service","path":"src/services/payment-service","context":"src/services/payment-service","dockerfile":"Dockerfile","type":"backend"}')
+          fi
+          if [ "${{ steps.filter.outputs.review-service }}" == "true" ]; then
+            SERVICES+=('{"name":"review-service","path":"src/services/review-service","context":"src/services/review-service","dockerfile":"Dockerfile","type":"backend"}')
+          fi
+          if [ "${{ steps.filter.outputs.notification-service }}" == "true" ]; then
+            SERVICES+=('{"name":"notification-service","path":"src/services/notification-service","context":"src/services/notification-service","dockerfile":"Dockerfile","type":"backend"}')
+          fi
+          if [ "${{ steps.filter.outputs.ai-matching-service }}" == "true" ]; then
+            SERVICES+=('{"name":"ai-matching-service","path":"src/services/ai-matching-service","context":"src/services/ai-matching-service","dockerfile":"Dockerfile","type":"backend"}')
+          fi
+          if [ "${{ steps.filter.outputs.pricing-service }}" == "true" ]; then
+            SERVICES+=('{"name":"pricing-service","path":"src/services/pricing-service","context":"src/services/pricing-service","dockerfile":"Dockerfile","type":"backend"}')
+          fi
+          if [ "${{ steps.filter.outputs.eta-service }}" == "true" ]; then
+            SERVICES+=('{"name":"eta-service","path":"src/services/eta-service","context":"src/services/eta-service","dockerfile":"Dockerfile","type":"backend"}')
+          fi
+
+          # Tracking service uses ROOT context (special case)
+          if [ "${{ steps.filter.outputs.tracking-service }}" == "true" ]; then
+            SERVICES+=('{"name":"tracking-service","path":"src/services/tracking-service","context":".","dockerfile":"src/services/tracking-service/Dockerfile","type":"backend"}')
+          fi
+
+          # Frontend apps
+          if [ "${{ steps.filter.outputs.customer-app }}" == "true" ]; then
+            SERVICES+=('{"name":"customer-app","path":"src/apps/customer-app","context":"src/apps/customer-app","dockerfile":"Dockerfile","type":"frontend"}')
+          fi
+          if [ "${{ steps.filter.outputs.driver-app }}" == "true" ]; then
+            SERVICES+=('{"name":"driver-app","path":"src/apps/driver-app","context":"src/apps/driver-app","dockerfile":"Dockerfile","type":"frontend"}')
+          fi
+          if [ "${{ steps.filter.outputs.admin-dashboard }}" == "true" ]; then
+            SERVICES+=('{"name":"admin-dashboard","path":"src/apps/admin-dashboard","context":"src/apps/admin-dashboard","dockerfile":"Dockerfile","type":"frontend"}')
+          fi
+
+          # Build JSON matrix
+          if [ ${#SERVICES[@]} -eq 0 ]; then
+            echo "matrix={\"include\":[]}" >> $GITHUB_OUTPUT
+            echo "has-changes=false" >> $GITHUB_OUTPUT
+            echo "📭 No service changes detected."
+          else
+            # Join array into JSON
+            MATRIX_JSON=$(printf '%s,' "${SERVICES[@]}")
+            MATRIX_JSON="[${MATRIX_JSON%,}]"
+            echo "matrix={\"include\":${MATRIX_JSON}}" >> $GITHUB_OUTPUT
+            echo "has-changes=true" >> $GITHUB_OUTPUT
+            echo "📬 Changed services: ${#SERVICES[@]}"
+            echo "$MATRIX_JSON" | jq .
+          fi
+
+  # ===========================================================================
+  # JOB 2: Install dependencies & run tests (per changed service)
+  # ===========================================================================
+  test:
+    name: "🧪 Test - ${{ matrix.name }}"
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has-changes == 'true'
+
+    strategy:
+      fail-fast: true  # Stop all tests if one fails
+      matrix: ${{ fromJson(needs.detect-changes.outputs.services-matrix) }}
+
+    steps:
+      - name: "📥 Checkout code"
+        uses: actions/checkout@v4
+
+      - name: "📦 Setup Node.js ${{ env.NODE_VERSION }}"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: "${{ matrix.path }}/package-lock.json"
+
+      - name: "📥 Install dependencies"
+        working-directory: ${{ matrix.path }}
+        run: |
+          echo "📦 Installing dependencies for ${{ matrix.name }}..."
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+          echo "✅ Dependencies installed successfully."
+
+      - name: "🔍 Lint check (if available)"
+        working-directory: ${{ matrix.path }}
+        continue-on-error: true
+        run: |
+          if npm run lint --if-present 2>/dev/null; then
+            echo "✅ Lint passed."
+          else
+            echo "⚠️ Lint script not found or failed (non-blocking)."
+          fi
+
+      - name: "🧪 Run tests"
+        working-directory: ${{ matrix.path }}
+        run: |
+          # Check if test script exists in package.json
+          if node -e "const pkg = require('./package.json'); if(pkg.scripts && pkg.scripts.test && pkg.scripts.test !== 'echo \"Error: no test specified\" && exit 1') { process.exit(0) } else { process.exit(1) }" 2>/dev/null; then
+            echo "🧪 Running tests for ${{ matrix.name }}..."
+            npm test -- --passWithNoTests --forceExit --detectOpenHandles 2>/dev/null || npm test
+            echo "✅ Tests passed."
+          else
+            echo "⚠️ No test script found for ${{ matrix.name }}. Skipping tests."
+            echo "💡 Consider adding tests to improve code quality."
+          fi
+
+  # ===========================================================================
+  # JOB 3: Build Docker images and push to Docker Hub
+  # ===========================================================================
+  build-push:
+    name: "🐳 Build & Push - ${{ matrix.name }}"
+    runs-on: ubuntu-latest
+    needs: [detect-changes, test]
+    if: |
+      needs.detect-changes.outputs.has-changes == 'true' && 
+      github.event_name == 'push' && 
+      github.ref == 'refs/heads/main'
+
+    strategy:
+      fail-fast: false  # Continue building other services even if one fails
+      max-parallel: 4   # Limit parallel builds to avoid Docker Hub rate limits
+      matrix: ${{ fromJson(needs.detect-changes.outputs.services-matrix) }}
+
+    steps:
+      - name: "📥 Checkout code"
+        uses: actions/checkout@v4
+
+      - name: "🔐 Login to Docker Hub"
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: "🏗️ Set up Docker Buildx"
+        uses: docker/setup-buildx-action@v3
+
+      - name: "📝 Generate Docker metadata (tags & labels)"
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_NAMESPACE }}/cab-${{ matrix.name }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest
+            type=raw,value={{date 'YYYYMMDD-HHmmss'}}
+
+      - name: "🐳 Build and Push Docker image"
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.context }}/${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+          build-args: |
+            NODE_ENV=production
+
+      - name: "📊 Image build summary"
+        run: |
+          echo "### 🐳 Docker Image Built Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Service** | \`${{ matrix.name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Image** | \`${{ env.DOCKER_NAMESPACE }}/cab-${{ matrix.name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Tags** | \`${{ env.IMAGE_TAG }}\`, \`latest\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+
+  # ===========================================================================
+  # JOB 4: Deploy to production server via SSH
+  # ===========================================================================
+  deploy:
+    name: "🚀 Deploy to Production"
+    runs-on: ubuntu-latest
+    needs: [detect-changes, build-push]
+    if: |
+      needs.detect-changes.outputs.has-changes == 'true' && 
+      github.event_name == 'push' && 
+      github.ref == 'refs/heads/main'
+
+    environment:
+      name: production
+      url: http://${{ secrets.SSH_HOST }}:3000
+
+    steps:
+      - name: "📥 Checkout code (for docker-compose files)"
+        uses: actions/checkout@v4
+
+      - name: "🔑 Setup SSH key"
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # Add server to known hosts to avoid interactive prompt
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: "📤 Copy docker-compose files to server"
+        run: |
+          echo "📤 Syncing deployment files to server..."
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            docker-compose.prod.yml \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/cab-booking/docker-compose.yml
+          echo "✅ Files synced."
+
+      - name: "🚀 Deploy services via SSH"
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'DEPLOY_SCRIPT'
+          set -e
+
+          echo "═══════════════════════════════════════════"
+          echo "🚀 DEPLOYING CAB BOOKING SYSTEM"
+          echo "═══════════════════════════════════════════"
+          echo "📅 Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"
+          echo "🏷️  Image Tag: ${{ env.IMAGE_TAG }}"
+          echo ""
+
+          # Navigate to deployment directory
+          cd /opt/cab-booking
+
+          # Export environment variables for docker-compose
+          export DOCKER_NAMESPACE="${{ env.DOCKER_NAMESPACE }}"
+          export IMAGE_TAG="${{ env.IMAGE_TAG }}"
+
+          # Login to Docker Hub on the server
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+          echo "📥 Pulling latest images..."
+          docker compose pull --quiet
+
+          echo "🔄 Rolling update (zero-downtime)..."
+          docker compose up -d --remove-orphans --force-recreate
+
+          echo "🧹 Cleaning up old images..."
+          docker image prune -f --filter "until=24h"
+
+          echo ""
+          echo "═══════════════════════════════════════════"
+          echo "✅ DEPLOYMENT COMPLETE"
+          echo "═══════════════════════════════════════════"
+
+          # Show running containers
+          echo ""
+          echo "📊 Running containers:"
+          docker compose ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
+          DEPLOY_SCRIPT
+
+      - name: "🏥 Health check after deployment"
+        run: |
+          echo "⏳ Waiting 30s for services to stabilize..."
+          sleep 30
+
+          echo "🏥 Running health checks..."
+          HEALTH_URL="http://${{ secrets.SSH_HOST }}:3000/health"
+          
+          # Retry health check up to 5 times
+          for i in $(seq 1 5); do
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" --connect-timeout 10 || echo "000")
+            if [ "$HTTP_STATUS" = "200" ]; then
+              echo "✅ API Gateway is healthy (HTTP $HTTP_STATUS)"
+              break
+            fi
+            echo "⏳ Attempt $i/5 - Status: $HTTP_STATUS. Retrying in 10s..."
+            sleep 10
+          done
+
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "❌ Health check FAILED after 5 attempts."
+            echo "⚠️ Check server logs: docker compose logs --tail=50"
+            exit 1
+          fi
+
+      - name: "🌐 Health check Frontend apps"
+        continue-on-error: true
+        run: |
+          echo "🌐 Checking Frontend apps..."
+          
+          # Customer App (port 80)
+          CUSTOMER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://${{ secrets.SSH_HOST }}:80" --connect-timeout 10 || echo "000")
+          if [ "$CUSTOMER_STATUS" = "200" ]; then
+            echo "✅ Customer App is healthy (HTTP $CUSTOMER_STATUS)"
+          else
+            echo "⚠️ Customer App returned HTTP $CUSTOMER_STATUS"
+          fi
+
+          # Driver App (port 8081)
+          DRIVER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://${{ secrets.SSH_HOST }}:8081" --connect-timeout 10 || echo "000")
+          if [ "$DRIVER_STATUS" = "200" ]; then
+            echo "✅ Driver App is healthy (HTTP $DRIVER_STATUS)"
+          else
+            echo "⚠️ Driver App returned HTTP $DRIVER_STATUS"
+          fi
+
+          # Admin Dashboard (port 8082)
+          ADMIN_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://${{ secrets.SSH_HOST }}:8082" --connect-timeout 10 || echo "000")
+          if [ "$ADMIN_STATUS" = "200" ]; then
+            echo "✅ Admin Dashboard is healthy (HTTP $ADMIN_STATUS)"
+          else
+            echo "⚠️ Admin Dashboard returned HTTP $ADMIN_STATUS"
+          fi
+
+      - name: "📊 Deployment summary"
+        if: always()
+        run: |
+          echo "### 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Server** | \`${{ secrets.SSH_HOST }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Image Tag** | \`${{ env.IMAGE_TAG }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Triggered by** | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Timestamp** | $(date -u '+%Y-%m-%d %H:%M:%S UTC') |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### 🌐 Application URLs" >> $GITHUB_STEP_SUMMARY
+          echo "| App | URL |" >> $GITHUB_STEP_SUMMARY
+          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
+          echo "| **API Gateway** | http://${{ secrets.SSH_HOST }}:3000 |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Customer App** | http://${{ secrets.SSH_HOST }}:80 |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Driver App** | http://${{ secrets.SSH_HOST }}:8081 |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Admin Dashboard** | http://${{ secrets.SSH_HOST }}:8082 |" >> $GITHUB_STEP_SUMMARY
+
+      - name: "🧹 Cleanup SSH key"
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
+
+  # ===========================================================================
+  # JOB 5: Notify on failure (optional - Slack/Discord/Email)
+  # ===========================================================================
+  notify-failure:
+    name: "🔔 Notify on Failure"
+    runs-on: ubuntu-latest
+    needs: [test, build-push, deploy]
+    if: failure()
+    steps:
+      - name: "❌ Pipeline failed notification"
+        run: |
+          echo "### ❌ CI/CD Pipeline Failed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Actor:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Please check the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details." >> $GITHUB_STEP_SUMMARY

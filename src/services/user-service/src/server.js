@@ -1,5 +1,6 @@
 const app = require('./app');
 const sequelize = require('./config/database');
+const { startConsumer } = require('./events/consumer');
 require('dotenv').config();
 
 const PORT = process.env.PORT || 3002;
@@ -20,6 +21,9 @@ async function startServer() {
         app.listen(PORT, () => {
             console.log(`✓ User Service is running on port ${PORT}`);
         });
+
+        // Start RabbitMQ Consumer
+        startConsumer().catch(console.error);
     } catch (error) {
         console.error('✗ Unable to start server:', error);
         process.exit(1);

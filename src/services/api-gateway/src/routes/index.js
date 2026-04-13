@@ -38,11 +38,12 @@ function createServiceProxy(serviceName, serviceConfig) {
 
             console.log(`[GATEWAY PROXY] ${serviceName}: ${req.method} ${req.originalUrl} -> ${serviceConfig.url}${proxyReq.path}`);
 
-            if (req.body && Object.keys(req.body).length > 0) {
+            if (req.body) {
                 const bodyData = JSON.stringify(req.body);
                 proxyReq.setHeader('Content-Type', 'application/json');
                 proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
                 proxyReq.write(bodyData);
+                proxyReq.end();
             }
         },
         onError: (err, req, res) => {
@@ -58,10 +59,61 @@ function createServiceProxy(serviceName, serviceConfig) {
 }
 
 function setupRoutes(app) {
+    // Manual Proxy for Maps (Nominatim) to bypass CORS
+    app.use('/maps', createProxyMiddleware({
+        target: 'https://nominatim.openstreetmap.org',
+        changeOrigin: true,
+        pathRewrite: {
+            '^/maps/reverse-geocode': '/reverse',
+            '^/maps/search': '/search'
+        },
+        onProxyReq: (proxyReq, req, res) => {
+            // Nominatim requires a valid User-Agent
+            proxyReq.setHeader('User-Agent', 'CabBookingSystem/1.0');
+            // Remove headers that might confuse Nominatim or trigger blocks
+            proxyReq.removeHeader('Origin');
+            proxyReq.removeHeader('Referer');
+            proxyReq.removeHeader('x-user-id');
+            proxyReq.removeHeader('x-user-role');
+            proxyReq.removeHeader('x-user-email');
+            proxyReq.removeHeader('Authorization');
+        }
+    }));
+
+    // Tracking Socket Proxy
+    const trackingSocketProxy = createProxyMiddleware('/tracking-socket', {
+        target: services.tracking.url,
+        changeOrigin: true,
+        ws: true,
+        logLevel: 'debug'
+    });
+    app.use('/tracking-socket', trackingSocketProxy);
+
+    // Notification Socket Proxy (Original /socket.io)
+    const notificationSocketProxy = createProxyMiddleware('/socket.io', {
+        target: services.notification.url,
+        changeOrigin: true,
+        ws: true,
+        logLevel: 'debug'
+    });
+    app.use('/socket.io', notificationSocketProxy);
+
+    const proxies = {
+        trackingSocket: trackingSocketProxy,
+        notificationSocket: notificationSocketProxy
+    };
+
     Object.keys(services).forEach(name => {
         const config = services[name];
         if (config) {
+            console.log(`[GATEWAY SETUP] Service: ${name}, Policy: ${config.authPolicy}`);
             let middleware = [];
+
+            // FORCE PUBLIC for driver service debugging
+            if (name === 'driver') {
+                config.authPolicy = 'public';
+                console.log('[GATEWAY DEBUG] Forced driver service to PUBLIC');
+            }
 
             // Declarative middleware selection based on authPolicy
             switch (config.authPolicy) {
@@ -70,6 +122,10 @@ function setupRoutes(app) {
                     break;
                 case 'protected':
                     middleware = [authenticateToken];
+                    // Inject Role-Based Access Control if defined
+                    if (config.roles && config.roles.length > 0) {
+                        middleware.push(authorizeRoles(...config.roles));
+                    }
                     break;
                 case 'public':
                     middleware = [optionalAuth];
@@ -89,6 +145,7 @@ function setupRoutes(app) {
     });
 
     console.log('✓ API Gateway: All microservice routes configured');
+    return proxies;
 }
 
 module.exports = { setupRoutes };

@@ -29,6 +29,14 @@ const DriverProfile = sequelize.define('DriverProfile', {
         type: DataTypes.STRING,
         allowNull: true
     },
+    avatar: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    address: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
     licenseNumber: {
         type: DataTypes.STRING,
         allowNull: true,
@@ -38,6 +46,17 @@ const DriverProfile = sequelize.define('DriverProfile', {
         type: DataTypes.JSONB,
         allowNull: true,
         field: 'vehicle_details'
+    },
+    rating: {
+        type: DataTypes.DECIMAL(3, 1),
+        defaultValue: 5.0,
+        allowNull: false
+    },
+    reviewCount: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+        allowNull: false,
+        field: 'review_count'
     }
 }, {
     tableName: 'drivers_profile'

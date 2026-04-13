@@ -1,0 +1,37 @@
+[
+  {
+    "payment_id": "pay_e3a9a549",
+    "ride_id": "deacd346-ea08-4753-9c3f-198b1471d86c",
+    "user_id": "5baa5a67-4367-4529-bab0-769d28f3af8a",
+    "driver_id": "ed176ff8-09b5-498e-b104-40446bea8740",
+    "status": "SUCCEEDED"
+  },
+  {
+    "payment_id": "pay_86994b22",
+    "ride_id": "019aa8b2-e781-428b-93c4-aa02128def20",
+    "user_id": "ed176ff8-09b5-498e-b104-40446bea8740",
+    "driver_id": null,
+    "status": "SUCCEEDED"
+  },
+  {
+    "payment_id": "pay_c16935a8",
+    "ride_id": "c4162d49-9d0f-4c59-a79e-9dd65d3fb9db",
+    "user_id": "ed176ff8-09b5-498e-b104-40446bea8740",
+    "driver_id": null,
+    "status": "SUCCEEDED"
+  },
+  {
+    "payment_id": "pay_b7622a68",
+    "ride_id": "9ecbafb3-dd91-45fe-9533-48d64e7182af",
+    "user_id": "ed176ff8-09b5-498e-b104-40446bea8740",
+    "driver_id": null,
+    "status": "SUCCEEDED"
+  },
+  {
+    "payment_id": "pay_aa80cd14",
+    "ride_id": "15db4166-b121-450c-9f6e-daece0fbfb40",
+    "user_id": "5baa5a67-4367-4529-bab0-769d28f3af8a",
+    "driver_id": null,
+    "status": "SUCCEEDED"
+  }
+]

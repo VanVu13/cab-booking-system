@@ -16,31 +16,32 @@ const services = {
     pricing: {
         url: process.env.PRICING_SERVICE_URL || 'http://pricing-service:3003',
         path: '/pricing',
-        authPolicy: 'public',
+        authPolicy: 'protected',
+        roles: ['PASSENGER'], // Only passengers can check price
         description: 'Pricing Service'
     },
-    eta: {
-        url: process.env.ETA_SERVICE_URL || 'http://eta-service:3004',
-        path: '/eta',
-        authPolicy: 'public',
-        description: 'ETA Estimation Service'
+
+    driver: {
+        url: process.env.DRIVER_SERVICE_URL || 'http://driver-service:3004',
+        path: '/drivers',
+        authPolicy: 'public', // TODO: Revert to protected after demo
+        // Mixed roles: Drivers update location, Passengers find drivers
+        description: 'Driver Service'
     },
-    matching: {
-        url: process.env.MATCHING_SERVICE_URL || 'http://matching-service:3005',
-        path: '/matching',
-        authPolicy: 'protected',
-        description: 'AI Matching Service'
-    },
+
+
     booking: {
         url: process.env.BOOKING_SERVICE_URL || 'http://booking-service:3006',
         path: '/bookings',
         authPolicy: 'protected',
+        roles: ['PASSENGER'], // Only passengers can book
         description: 'Booking Service'
     },
     ride: {
         url: process.env.RIDE_SERVICE_URL || 'http://ride-service:3007',
         path: '/rides',
         authPolicy: 'protected',
+        roles: ['PASSENGER', 'DRIVER'], // Both need access (view/update)
         description: 'Ride Service'
     },
     payment: {
@@ -55,12 +56,25 @@ const services = {
         authPolicy: 'protected',
         description: 'Notification Service'
     },
-    admin: {
-        url: process.env.ADMIN_SERVICE_URL || 'http://admin-service:3010',
-        path: '/admin',
-        authPolicy: 'admin', // Requires Admin role
-        description: 'Admin Service'
-    }
+    review: {
+        url: process.env.REVIEW_SERVICE_URL || 'http://review-service:3010',
+        path: '/reviews',
+        authPolicy: 'protected',
+        roles: ['PASSENGER', 'DRIVER'], // Two-way reviews
+        description: 'Review Service'
+    },
+    eta: {
+        url: process.env.ETA_SERVICE_URL || 'http://eta-service:3012',
+        path: '/eta',
+        authPolicy: 'public', // ETA is public for demo, can be protected later
+        description: 'ETA Calculation Service'
+    },
+    tracking: {
+        url: process.env.TRACKING_SERVICE_URL || 'http://tracking-service:3011',
+        path: '/tracking',
+        authPolicy: 'public', // Tracking is public for demo, can be protected later
+        description: 'Realtime Tracking Service'
+    },
 };
 
 module.exports = services;
