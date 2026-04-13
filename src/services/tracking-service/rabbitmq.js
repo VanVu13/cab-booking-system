@@ -1,39 +1,61 @@
 const amqp = require('amqplib');
 
-const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://rabbitmq:5672';
+const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost:5672';
 const EXCHANGE_NAME = 'ride.topic';
 
-async function initRabbitMQ(onLocationUpdate) {
-    try {
-        const connection = await amqp.connect(RABBITMQ_URL);
-        const channel = await connection.createChannel();
+let connection = null;
 
-        await channel.assertExchange(EXCHANGE_NAME, 'topic', { durable: true });
+async function initRabbitMQ(onLocationUpdate, delay = 3000) {
+    let attempt = 0;
+    while (true) {
+        attempt++;
+        try {
+            console.log(`[RabbitMQ] Tracking Service: Connection attempt ${attempt}...`);
+            connection = await amqp.connect(RABBITMQ_URL);
+            const channel = await connection.createChannel();
 
-        const q = await channel.assertQueue('', { exclusive: true });
+            await channel.assertExchange(EXCHANGE_NAME, 'topic', { durable: true });
 
-        // Bind để nhận sự kiện vị trí tài xế và TẤT CẢ trạng thái liên quan đến chuyến xe
-        await channel.bindQueue(q.queue, EXCHANGE_NAME, 'driver.location_updated');
-        await channel.bindQueue(q.queue, EXCHANGE_NAME, 'ride.#'); // Listen to all ride events (created, assigned, arrived, etc.)
+            const q = await channel.assertQueue('', { exclusive: true });
 
-        console.log(`✓ Tracking Service connected to RabbitMQ (Queue: ${q.queue})`);
+            // Bind to receive driver location events and ALL ride status events
+            await channel.bindQueue(q.queue, EXCHANGE_NAME, 'driver.location_updated');
+            await channel.bindQueue(q.queue, EXCHANGE_NAME, 'ride.#');
 
-        channel.consume(q.queue, (msg) => {
-            if (msg.content) {
-                try {
-                    const data = JSON.parse(msg.content.toString());
-                    const routingKey = msg.fields.routingKey;
+            console.log(`✓ Tracking Service connected to RabbitMQ (Queue: ${q.queue})`);
 
-                    onLocationUpdate({ ...data, routingKey });
-                } catch (err) {
-                    console.error('Error parsing RabbitMQ message:', err);
+            channel.consume(q.queue, (msg) => {
+                if (msg.content) {
+                    try {
+                        const data = JSON.parse(msg.content.toString());
+                        const routingKey = msg.fields.routingKey;
+
+                        onLocationUpdate({ ...data, routingKey });
+                    } catch (err) {
+                        console.error('Error parsing RabbitMQ message:', err);
+                    }
                 }
-            }
-        }, { noAck: true });
+            }, { noAck: true });
 
-    } catch (error) {
-        console.error('Failed to connect to RabbitMQ:', error);
-        // Retry logic có thể thêm ở đây
+            // Handle connection close -> reconnect
+            connection.on('close', () => {
+                console.error('[RabbitMQ] Tracking Service: Connection closed. Reconnecting...');
+                connection = null;
+                initRabbitMQ(onLocationUpdate);
+            });
+
+            connection.on('error', (err) => {
+                console.error('[RabbitMQ] Tracking Service: Connection error:', err.message);
+            });
+
+            return; // Successfully connected, exit retry loop
+
+        } catch (error) {
+            console.error(`✗ Tracking Service: RabbitMQ connection attempt ${attempt} failed:`, error.message);
+            const nextDelay = Math.min(delay * Math.pow(1.2, attempt), 30000);
+            console.log(`   Retrying in ${Math.round(nextDelay / 1000)}s...`);
+            await new Promise(resolve => setTimeout(resolve, nextDelay));
+        }
     }
 }
 

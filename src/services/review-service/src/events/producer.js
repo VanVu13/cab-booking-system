@@ -4,19 +4,44 @@ const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost:5672';
 const EXCHANGE_NAME = 'cab_booking_topic';
 
 let channel = null;
+let connection = null;
+
+async function connectProducer(delay = 3000) {
+    let attempt = 0;
+    while (true) {
+        attempt++;
+        try {
+            console.log(`[RabbitMQ] Review Service producer: Connection attempt ${attempt}...`);
+            connection = await amqp.connect(RABBITMQ_URL);
+            channel = await connection.createChannel();
+            await channel.assertExchange(EXCHANGE_NAME, 'topic', { durable: true });
+            console.log('✓ Review Service producer connected to RabbitMQ');
+
+            // Handle connection close -> reconnect
+            connection.on('close', () => {
+                console.error('[RabbitMQ] Review producer: Connection closed. Reconnecting...');
+                channel = null;
+                connection = null;
+                connectProducer();
+            });
+
+            connection.on('error', (err) => {
+                console.error('[RabbitMQ] Review producer: Connection error:', err.message);
+            });
+
+            return channel;
+        } catch (error) {
+            console.error(`✗ Review producer: RabbitMQ connection attempt ${attempt} failed:`, error.message);
+            const nextDelay = Math.min(delay * Math.pow(1.2, attempt), 30000);
+            console.log(`   Retrying in ${Math.round(nextDelay / 1000)}s...`);
+            await new Promise(resolve => setTimeout(resolve, nextDelay));
+        }
+    }
+}
 
 async function getChannel() {
     if (channel) return channel;
-    try {
-        const connection = await amqp.connect(RABBITMQ_URL);
-        channel = await connection.createChannel();
-        await channel.assertExchange(EXCHANGE_NAME, 'topic', { durable: true });
-        console.log('[RabbitMQ] Review Service producer connected');
-        return channel;
-    } catch (error) {
-        console.error('[RabbitMQ] Producer connection error:', error);
-        throw error;
-    }
+    return await connectProducer();
 }
 
 /**
@@ -41,5 +66,6 @@ async function publishReviewSubmitted(reviewData) {
 }
 
 module.exports = {
+    connectProducer,
     publishReviewSubmitted
 };

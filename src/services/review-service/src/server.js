@@ -18,7 +18,13 @@ async function startServer() {
         await sequelize.sync({ alter: true });
         console.log('✓ Database models synced');
 
-        // 2. Start HTTP server
+        // 2. Connect RabbitMQ producer (non-blocking, retries in background)
+        const { connectProducer } = require('./events/producer');
+        connectProducer().catch(err => {
+            console.error('✗ RabbitMQ producer initial connection failed (will retry):', err.message);
+        });
+
+        // 3. Start HTTP server
         const server = app.listen(PORT, () => {
             console.log(`✓ Review Service running on port ${PORT}`);
             console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
