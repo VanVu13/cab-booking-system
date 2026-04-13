@@ -111,9 +111,8 @@ jobs:
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
-          # Always force build all services as requested
-          FORCE_BUILD=true
-          echo "🔥 Forcing build for all services!"
+          # Only build changed services (set to true to force full build)
+          FORCE_BUILD=false
           
           # Build a JSON array of changed services for the matrix strategy
           SERVICES=()
@@ -284,6 +283,7 @@ jobs:
             type=sha,prefix=
             type=raw,value=latest
             type=raw,value={{date 'YYYYMMDD-HHmmss'}}
+            type=raw,value=${{ github.sha }}
 
       - name: "🐳 Build and Push Docker image"
         uses: docker/build-push-action@v5
@@ -344,8 +344,26 @@ jobs:
           export DOCKER_NAMESPACE="${{ env.DOCKER_NAMESPACE }}"
           export IMAGE_TAG="${{ env.IMAGE_TAG }}"
 
+          echo "📝 Generating .env file for Docker Compose..."
+          cat <<EOF > .env
+          DOCKER_NAMESPACE=${{ env.DOCKER_NAMESPACE }}
+          IMAGE_TAG=${{ env.IMAGE_TAG }}
+          DB_USER=${{ secrets.DB_USER || 'admin' }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD || 'postgres123' }}
+          MONGO_USER=${{ secrets.MONGO_USER || 'admin' }}
+          MONGO_PASSWORD=${{ secrets.MONGO_PASSWORD || 'mongo123' }}
+          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD || 'redis123' }}
+          RABBITMQ_USER=${{ secrets.RABBITMQ_USER || 'admin' }}
+          RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD || 'rabbit123' }}
+          RABBITMQ_COOKIE=${{ secrets.RABBITMQ_COOKIE || 'abc123cookie' }}
+          JWT_SECRET=${{ secrets.JWT_SECRET || 'supersecretkey12345678901234567890' }}
+          API_PORT=3000
+          CORS_ORIGIN=*
+          EOF
+
           # Login to Docker Hub
           echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
 
           echo "📥 Pulling latest images..."
           docker compose -f docker-compose.prod.yml pull --quiet
