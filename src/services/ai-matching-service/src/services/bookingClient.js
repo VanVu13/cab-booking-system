@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const BOOKING_SERVICE_URL = process.env.BOOKING_SERVICE_URL || 'http://booking-service:3002';
+const BOOKING_SERVICE_URL = process.env.BOOKING_SERVICE_URL || 'http://booking-service:3006';
 const MOCK_DEPENDENCIES = process.env.MOCK_DEPENDENCIES === 'true';
 
 /**
