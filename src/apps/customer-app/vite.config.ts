@@ -16,7 +16,7 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:3000', // API Gateway
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/v1/, '') // Remove /api/v1 prefix to match Gateway routes
+        rewrite: (path) => path.replace(/^\/api\//, '/') // Remove /api prefix to match Gateway routes
       },
       '/socket.io': {
         target: 'http://localhost:3000',

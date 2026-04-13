@@ -1,18 +1,11 @@
 import { io, Socket } from 'socket.io-client'
 import { useAuthStore } from '@/stores/useAuthStore'
 
-// Fallback dynamically to current hostname to support VM deployments
-const getUrl = (envVar: string | undefined, defaultPort: string | null = null) => {
-    if (envVar && !envVar.includes('localhost')) return envVar;
-    if (defaultPort) return `${window.location.protocol}//${window.location.hostname}:${defaultPort}`;
-    return window.location.origin;
-};
-
 // Driver App connects directly to driver-service (port 3004) via /ws proxy
 // In dev: Vite dev server proxies /ws -> localhost:3004 (no CORS issue)
-// In prod: Set VITE_DRIVER_WS_URL to driver-service URL
-const DRIVER_WS_URL = getUrl(import.meta.env.VITE_DRIVER_WS_URL, null)
-const NOTIFICATION_URL = getUrl(import.meta.env.VITE_SOCKET_URL, '3000')
+// In prod: Nginx proxies /ws/ -> driver-service:3004/ws/
+const DRIVER_WS_URL = '';
+const NOTIFICATION_URL = '';
 
 // Manage multiple socket instances by path/url key
 let sockets: Record<string, Socket> = {}

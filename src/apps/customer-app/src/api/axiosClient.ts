@@ -1,16 +1,7 @@
 import axios from 'axios'
 import { useAuthStore } from '@/stores/useAuthStore'
 
-const getApiUrl = () => {
-    const envUrl = import.meta.env.VITE_API_URL;
-    if (envUrl && !envUrl.includes('localhost')) {
-        return envUrl;
-    }
-    // dynamically resolve based on current hostname
-    return `${window.location.protocol}//${window.location.hostname}:3000`;
-};
-
-const CLIENT_API_URL = getApiUrl()
+const CLIENT_API_URL = '/api';
 
 const axiosClient = axios.create({
     baseURL: CLIENT_API_URL,
