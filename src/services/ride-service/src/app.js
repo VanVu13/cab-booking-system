@@ -27,7 +27,7 @@ app.get('/health', (req, res) => {
     });
 });
 
-// Mount routes
+// Mount routes 1
 app.use('/rides', rideRoutes); // Support legacy/gateway format
 app.use('/', rideRoutes);      // Support direct service-to-service format
 
