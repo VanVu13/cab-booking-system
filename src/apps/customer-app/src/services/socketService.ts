@@ -1,7 +1,16 @@
 import { io, Socket } from 'socket.io-client'
 import { useAuthStore } from '@/stores/useAuthStore'
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000'
+const getSocketUrl = () => {
+    const envUrl = import.meta.env.VITE_SOCKET_URL;
+    if (envUrl && !envUrl.includes('localhost')) {
+        return envUrl;
+    }
+    // dynamically resolve based on current hostname
+    return `${window.location.protocol}//${window.location.hostname}:3000`;
+};
+
+const SOCKET_URL = getSocketUrl();
 
 // Quản lý nhiều instance socket
 let sockets: Record<string, Socket> = {};
