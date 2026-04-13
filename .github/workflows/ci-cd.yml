@@ -306,160 +306,160 @@ jobs:
   # ===========================================================================
   # JOB 4: Deploy to production server via SSH
   # ===========================================================================
-  deploy:
-    name: "🚀 Deploy to Production"
-    runs-on: ubuntu-latest
-    needs: [detect-changes, build-push]
-    if: |
-      needs.detect-changes.outputs.has-changes == 'true' && 
-      github.event_name == 'push' && 
-      github.ref == 'refs/heads/main'
+  # deploy:
+  #   name: "🚀 Deploy to Production"
+  #   runs-on: ubuntu-latest
+  #   needs: [detect-changes, build-push]
+  #   if: |
+  #     needs.detect-changes.outputs.has-changes == 'true' && 
+  #     github.event_name == 'push' && 
+  #     github.ref == 'refs/heads/main'
 
-    environment:
-      name: production
-      url: http://${{ secrets.SSH_HOST }}:3000
+  #   environment:
+  #     name: production
+  #     url: http://${{ secrets.SSH_HOST }}:3000
 
-    steps:
-      - name: "📥 Checkout code (for docker-compose files)"
-        uses: actions/checkout@v4
+  #   steps:
+  #     - name: "📥 Checkout code (for docker-compose files)"
+  #       uses: actions/checkout@v4
 
-      - name: "🔑 Setup SSH key"
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          # Add server to known hosts to avoid interactive prompt
-          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+  #     - name: "🔑 Setup SSH key"
+  #       run: |
+  #         mkdir -p ~/.ssh
+  #         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+  #         chmod 600 ~/.ssh/deploy_key
+  #         # Add server to known hosts to avoid interactive prompt
+  #         ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: "📤 Copy docker-compose files to server"
-        run: |
-          echo "📤 Syncing deployment files to server..."
-          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            docker-compose.prod.yml \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/cab-booking/docker-compose.yml
-          echo "✅ Files synced."
+  #     - name: "📤 Copy docker-compose files to server"
+  #       run: |
+  #         echo "📤 Syncing deployment files to server..."
+  #         scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+  #           docker-compose.prod.yml \
+  #           ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/cab-booking/docker-compose.yml
+  #         echo "✅ Files synced."
 
-      - name: "🚀 Deploy services via SSH"
-        run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'DEPLOY_SCRIPT'
-          set -e
+  #     - name: "🚀 Deploy services via SSH"
+  #       run: |
+  #         ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+  #           ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'DEPLOY_SCRIPT'
+  #         set -e
 
-          echo "═══════════════════════════════════════════"
-          echo "🚀 DEPLOYING CAB BOOKING SYSTEM"
-          echo "═══════════════════════════════════════════"
-          echo "📅 Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"
-          echo "🏷️  Image Tag: ${{ env.IMAGE_TAG }}"
-          echo ""
+  #         echo "═══════════════════════════════════════════"
+  #         echo "🚀 DEPLOYING CAB BOOKING SYSTEM"
+  #         echo "═══════════════════════════════════════════"
+  #         echo "📅 Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"
+  #         echo "🏷️  Image Tag: ${{ env.IMAGE_TAG }}"
+  #         echo ""
 
-          # Navigate to deployment directory
-          cd /opt/cab-booking
+  #         # Navigate to deployment directory
+  #         cd /opt/cab-booking
 
-          # Export environment variables for docker-compose
-          export DOCKER_NAMESPACE="${{ env.DOCKER_NAMESPACE }}"
-          export IMAGE_TAG="${{ env.IMAGE_TAG }}"
+  #         # Export environment variables for docker-compose
+  #         export DOCKER_NAMESPACE="${{ env.DOCKER_NAMESPACE }}"
+  #         export IMAGE_TAG="${{ env.IMAGE_TAG }}"
 
-          # Login to Docker Hub on the server
-          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+  #         # Login to Docker Hub on the server
+  #         echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-          echo "📥 Pulling latest images..."
-          docker compose pull --quiet
+  #         echo "📥 Pulling latest images..."
+  #         docker compose pull --quiet
 
-          echo "🔄 Rolling update (zero-downtime)..."
-          docker compose up -d --remove-orphans --force-recreate
+  #         echo "🔄 Rolling update (zero-downtime)..."
+  #         docker compose up -d --remove-orphans --force-recreate
 
-          echo "🧹 Cleaning up old images..."
-          docker image prune -f --filter "until=24h"
+  #         echo "🧹 Cleaning up old images..."
+  #         docker image prune -f --filter "until=24h"
 
-          echo ""
-          echo "═══════════════════════════════════════════"
-          echo "✅ DEPLOYMENT COMPLETE"
-          echo "═══════════════════════════════════════════"
+  #         echo ""
+  #         echo "═══════════════════════════════════════════"
+  #         echo "✅ DEPLOYMENT COMPLETE"
+  #         echo "═══════════════════════════════════════════"
 
-          # Show running containers
-          echo ""
-          echo "📊 Running containers:"
-          docker compose ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
-          DEPLOY_SCRIPT
+  #         # Show running containers
+  #         echo ""
+  #         echo "📊 Running containers:"
+  #         docker compose ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
+  #         DEPLOY_SCRIPT
 
-      - name: "🏥 Health check after deployment"
-        run: |
-          echo "⏳ Waiting 30s for services to stabilize..."
-          sleep 30
+  #     - name: "🏥 Health check after deployment"
+  #       run: |
+  #         echo "⏳ Waiting 30s for services to stabilize..."
+  #         sleep 30
 
-          echo "🏥 Running health checks..."
-          HEALTH_URL="http://${{ secrets.SSH_HOST }}:3000/health"
+  #         echo "🏥 Running health checks..."
+  #         HEALTH_URL="http://${{ secrets.SSH_HOST }}:3000/health"
           
-          # Retry health check up to 5 times
-          for i in $(seq 1 5); do
-            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" --connect-timeout 10 || echo "000")
-            if [ "$HTTP_STATUS" = "200" ]; then
-              echo "✅ API Gateway is healthy (HTTP $HTTP_STATUS)"
-              break
-            fi
-            echo "⏳ Attempt $i/5 - Status: $HTTP_STATUS. Retrying in 10s..."
-            sleep 10
-          done
+  #         # Retry health check up to 5 times
+  #         for i in $(seq 1 5); do
+  #           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" --connect-timeout 10 || echo "000")
+  #           if [ "$HTTP_STATUS" = "200" ]; then
+  #             echo "✅ API Gateway is healthy (HTTP $HTTP_STATUS)"
+  #             break
+  #           fi
+  #           echo "⏳ Attempt $i/5 - Status: $HTTP_STATUS. Retrying in 10s..."
+  #           sleep 10
+  #         done
 
-          if [ "$HTTP_STATUS" != "200" ]; then
-            echo "❌ Health check FAILED after 5 attempts."
-            echo "⚠️ Check server logs: docker compose logs --tail=50"
-            exit 1
-          fi
+  #         if [ "$HTTP_STATUS" != "200" ]; then
+  #           echo "❌ Health check FAILED after 5 attempts."
+  #           echo "⚠️ Check server logs: docker compose logs --tail=50"
+  #           exit 1
+  #         fi
 
-      - name: "🌐 Health check Frontend apps"
-        continue-on-error: true
-        run: |
-          echo "🌐 Checking Frontend apps..."
+  #     - name: "🌐 Health check Frontend apps"
+  #       continue-on-error: true
+  #       run: |
+  #         echo "🌐 Checking Frontend apps..."
           
-          # Customer App (port 80)
-          CUSTOMER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://${{ secrets.SSH_HOST }}:80" --connect-timeout 10 || echo "000")
-          if [ "$CUSTOMER_STATUS" = "200" ]; then
-            echo "✅ Customer App is healthy (HTTP $CUSTOMER_STATUS)"
-          else
-            echo "⚠️ Customer App returned HTTP $CUSTOMER_STATUS"
-          fi
+  #         # Customer App (port 80)
+  #         CUSTOMER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://${{ secrets.SSH_HOST }}:80" --connect-timeout 10 || echo "000")
+  #         if [ "$CUSTOMER_STATUS" = "200" ]; then
+  #           echo "✅ Customer App is healthy (HTTP $CUSTOMER_STATUS)"
+  #         else
+  #           echo "⚠️ Customer App returned HTTP $CUSTOMER_STATUS"
+  #         fi
 
-          # Driver App (port 8081)
-          DRIVER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://${{ secrets.SSH_HOST }}:8081" --connect-timeout 10 || echo "000")
-          if [ "$DRIVER_STATUS" = "200" ]; then
-            echo "✅ Driver App is healthy (HTTP $DRIVER_STATUS)"
-          else
-            echo "⚠️ Driver App returned HTTP $DRIVER_STATUS"
-          fi
+  #         # Driver App (port 8081)
+  #         DRIVER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://${{ secrets.SSH_HOST }}:8081" --connect-timeout 10 || echo "000")
+  #         if [ "$DRIVER_STATUS" = "200" ]; then
+  #           echo "✅ Driver App is healthy (HTTP $DRIVER_STATUS)"
+  #         else
+  #           echo "⚠️ Driver App returned HTTP $DRIVER_STATUS"
+  #         fi
 
-          # Admin Dashboard (port 8082)
-          ADMIN_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://${{ secrets.SSH_HOST }}:8082" --connect-timeout 10 || echo "000")
-          if [ "$ADMIN_STATUS" = "200" ]; then
-            echo "✅ Admin Dashboard is healthy (HTTP $ADMIN_STATUS)"
-          else
-            echo "⚠️ Admin Dashboard returned HTTP $ADMIN_STATUS"
-          fi
+  #         # Admin Dashboard (port 8082)
+  #         ADMIN_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://${{ secrets.SSH_HOST }}:8082" --connect-timeout 10 || echo "000")
+  #         if [ "$ADMIN_STATUS" = "200" ]; then
+  #           echo "✅ Admin Dashboard is healthy (HTTP $ADMIN_STATUS)"
+  #         else
+  #           echo "⚠️ Admin Dashboard returned HTTP $ADMIN_STATUS"
+  #         fi
 
-      - name: "📊 Deployment summary"
-        if: always()
-        run: |
-          echo "### 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Server** | \`${{ secrets.SSH_HOST }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Image Tag** | \`${{ env.IMAGE_TAG }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Commit** | [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}) |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Triggered by** | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Timestamp** | $(date -u '+%Y-%m-%d %H:%M:%S UTC') |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### 🌐 Application URLs" >> $GITHUB_STEP_SUMMARY
-          echo "| App | URL |" >> $GITHUB_STEP_SUMMARY
-          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
-          echo "| **API Gateway** | http://${{ secrets.SSH_HOST }}:3000 |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Customer App** | http://${{ secrets.SSH_HOST }}:80 |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Driver App** | http://${{ secrets.SSH_HOST }}:8081 |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Admin Dashboard** | http://${{ secrets.SSH_HOST }}:8082 |" >> $GITHUB_STEP_SUMMARY
+  #     - name: "📊 Deployment summary"
+  #       if: always()
+  #       run: |
+  #         echo "### 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+  #         echo "" >> $GITHUB_STEP_SUMMARY
+  #         echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+  #         echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
+  #         echo "| **Server** | \`${{ secrets.SSH_HOST }}\` |" >> $GITHUB_STEP_SUMMARY
+  #         echo "| **Image Tag** | \`${{ env.IMAGE_TAG }}\` |" >> $GITHUB_STEP_SUMMARY
+  #         echo "| **Commit** | [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}) |" >> $GITHUB_STEP_SUMMARY
+  #         echo "| **Triggered by** | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+  #         echo "| **Timestamp** | $(date -u '+%Y-%m-%d %H:%M:%S UTC') |" >> $GITHUB_STEP_SUMMARY
+  #         echo "" >> $GITHUB_STEP_SUMMARY
+  #         echo "#### 🌐 Application URLs" >> $GITHUB_STEP_SUMMARY
+  #         echo "| App | URL |" >> $GITHUB_STEP_SUMMARY
+  #         echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
+  #         echo "| **API Gateway** | http://${{ secrets.SSH_HOST }}:3000 |" >> $GITHUB_STEP_SUMMARY
+  #         echo "| **Customer App** | http://${{ secrets.SSH_HOST }}:80 |" >> $GITHUB_STEP_SUMMARY
+  #         echo "| **Driver App** | http://${{ secrets.SSH_HOST }}:8081 |" >> $GITHUB_STEP_SUMMARY
+  #         echo "| **Admin Dashboard** | http://${{ secrets.SSH_HOST }}:8082 |" >> $GITHUB_STEP_SUMMARY
 
-      - name: "🧹 Cleanup SSH key"
-        if: always()
-        run: rm -f ~/.ssh/deploy_key
+  #     - name: "🧹 Cleanup SSH key"
+  #       if: always()
+  #       run: rm -f ~/.ssh/deploy_key
 
   # ===========================================================================
   # JOB 5: Notify on failure (optional - Slack/Discord/Email)
@@ -467,7 +467,7 @@ jobs:
   notify-failure:
     name: "🔔 Notify on Failure"
     runs-on: ubuntu-latest
-    needs: [test, build-push, deploy]
+    needs: [test, build-push]
     if: failure()
     steps:
       - name: "❌ Pipeline failed notification"
