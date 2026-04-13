@@ -108,61 +108,70 @@ jobs:
 
       - name: "📋 Build dynamic matrix from changed services"
         id: build-matrix
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
+          # Check if force build is requested via commit message
+          FORCE_BUILD=false
+          if [[ "$COMMIT_MESSAGE" == *"[force build]"* ]]; then
+            echo "🔥 [force build] tag detected in commit message. Forcing build for all services!"
+            FORCE_BUILD=true
+          fi
+          
           # Build a JSON array of changed services for the matrix strategy
           SERVICES=()
 
           # Backend services - standard context (Dockerfile in service dir)
-          if [ "${{ steps.filter.outputs.api-gateway }}" == "true" ]; then
+          if [ "${{ steps.filter.outputs.api-gateway }}" == "true" ] || [ "$FORCE_BUILD" == "true" ]; then
             SERVICES+=('{"name":"api-gateway","path":"src/services/api-gateway","context":"src/services/api-gateway","dockerfile":"Dockerfile","type":"backend"}')
           fi
-          if [ "${{ steps.filter.outputs.auth-service }}" == "true" ]; then
+          if [ "${{ steps.filter.outputs.auth-service }}" == "true" ] || [ "$FORCE_BUILD" == "true" ]; then
             SERVICES+=('{"name":"auth-service","path":"src/services/auth-service","context":"src/services/auth-service","dockerfile":"Dockerfile","type":"backend"}')
           fi
-          if [ "${{ steps.filter.outputs.user-service }}" == "true" ]; then
+          if [ "${{ steps.filter.outputs.user-service }}" == "true" ] || [ "$FORCE_BUILD" == "true" ]; then
             SERVICES+=('{"name":"user-service","path":"src/services/user-service","context":"src/services/user-service","dockerfile":"Dockerfile","type":"backend"}')
           fi
-          if [ "${{ steps.filter.outputs.booking-service }}" == "true" ]; then
+          if [ "${{ steps.filter.outputs.booking-service }}" == "true" ] || [ "$FORCE_BUILD" == "true" ]; then
             SERVICES+=('{"name":"booking-service","path":"src/services/booking-service","context":"src/services/booking-service","dockerfile":"Dockerfile","type":"backend"}')
           fi
-          if [ "${{ steps.filter.outputs.driver-service }}" == "true" ]; then
+          if [ "${{ steps.filter.outputs.driver-service }}" == "true" ] || [ "$FORCE_BUILD" == "true" ]; then
             SERVICES+=('{"name":"driver-service","path":"src/services/driver-service","context":"src/services/driver-service","dockerfile":"Dockerfile","type":"backend"}')
           fi
-          if [ "${{ steps.filter.outputs.ride-service }}" == "true" ]; then
+          if [ "${{ steps.filter.outputs.ride-service }}" == "true" ] || [ "$FORCE_BUILD" == "true" ]; then
             SERVICES+=('{"name":"ride-service","path":"src/services/ride-service","context":"src/services/ride-service","dockerfile":"Dockerfile","type":"backend"}')
           fi
-          if [ "${{ steps.filter.outputs.payment-service }}" == "true" ]; then
+          if [ "${{ steps.filter.outputs.payment-service }}" == "true" ] || [ "$FORCE_BUILD" == "true" ]; then
             SERVICES+=('{"name":"payment-service","path":"src/services/payment-service","context":"src/services/payment-service","dockerfile":"Dockerfile","type":"backend"}')
           fi
-          if [ "${{ steps.filter.outputs.review-service }}" == "true" ]; then
+          if [ "${{ steps.filter.outputs.review-service }}" == "true" ] || [ "$FORCE_BUILD" == "true" ]; then
             SERVICES+=('{"name":"review-service","path":"src/services/review-service","context":"src/services/review-service","dockerfile":"Dockerfile","type":"backend"}')
           fi
-          if [ "${{ steps.filter.outputs.notification-service }}" == "true" ]; then
+          if [ "${{ steps.filter.outputs.notification-service }}" == "true" ] || [ "$FORCE_BUILD" == "true" ]; then
             SERVICES+=('{"name":"notification-service","path":"src/services/notification-service","context":"src/services/notification-service","dockerfile":"Dockerfile","type":"backend"}')
           fi
-          if [ "${{ steps.filter.outputs.ai-matching-service }}" == "true" ]; then
+          if [ "${{ steps.filter.outputs.ai-matching-service }}" == "true" ] || [ "$FORCE_BUILD" == "true" ]; then
             SERVICES+=('{"name":"ai-matching-service","path":"src/services/ai-matching-service","context":"src/services/ai-matching-service","dockerfile":"Dockerfile","type":"backend"}')
           fi
-          if [ "${{ steps.filter.outputs.pricing-service }}" == "true" ]; then
+          if [ "${{ steps.filter.outputs.pricing-service }}" == "true" ] || [ "$FORCE_BUILD" == "true" ]; then
             SERVICES+=('{"name":"pricing-service","path":"src/services/pricing-service","context":"src/services/pricing-service","dockerfile":"Dockerfile","type":"backend"}')
           fi
-          if [ "${{ steps.filter.outputs.eta-service }}" == "true" ]; then
+          if [ "${{ steps.filter.outputs.eta-service }}" == "true" ] || [ "$FORCE_BUILD" == "true" ]; then
             SERVICES+=('{"name":"eta-service","path":"src/services/eta-service","context":"src/services/eta-service","dockerfile":"Dockerfile","type":"backend"}')
           fi
 
           # Tracking service uses ROOT context (special case)
-          if [ "${{ steps.filter.outputs.tracking-service }}" == "true" ]; then
+          if [ "${{ steps.filter.outputs.tracking-service }}" == "true" ] || [ "$FORCE_BUILD" == "true" ]; then
             SERVICES+=('{"name":"tracking-service","path":"src/services/tracking-service","context":".","dockerfile":"src/services/tracking-service/Dockerfile","type":"backend"}')
           fi
 
           # Frontend apps
-          if [ "${{ steps.filter.outputs.customer-app }}" == "true" ]; then
+          if [ "${{ steps.filter.outputs.customer-app }}" == "true" ] || [ "$FORCE_BUILD" == "true" ]; then
             SERVICES+=('{"name":"customer-app","path":"src/apps/customer-app","context":"src/apps/customer-app","dockerfile":"Dockerfile","type":"frontend"}')
           fi
-          if [ "${{ steps.filter.outputs.driver-app }}" == "true" ]; then
+          if [ "${{ steps.filter.outputs.driver-app }}" == "true" ] || [ "$FORCE_BUILD" == "true" ]; then
             SERVICES+=('{"name":"driver-app","path":"src/apps/driver-app","context":"src/apps/driver-app","dockerfile":"Dockerfile","type":"frontend"}')
           fi
-          if [ "${{ steps.filter.outputs.admin-dashboard }}" == "true" ]; then
+          if [ "${{ steps.filter.outputs.admin-dashboard }}" == "true" ] || [ "$FORCE_BUILD" == "true" ]; then
             SERVICES+=('{"name":"admin-dashboard","path":"src/apps/admin-dashboard","context":"src/apps/admin-dashboard","dockerfile":"Dockerfile","type":"frontend"}')
           fi
 
