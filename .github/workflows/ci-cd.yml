@@ -342,12 +342,15 @@ jobs:
 
           # Export environment variables for docker-compose
           export DOCKER_NAMESPACE="${{ env.DOCKER_NAMESPACE }}"
-          export IMAGE_TAG="${{ env.IMAGE_TAG }}"
+          
+          # Fix: Use 'latest' tag! We only build modified services,
+          # so unmodified services won't have the new commit SHA.
+          export IMAGE_TAG="latest"
 
           echo "📝 Generating .env file for Docker Compose..."
           cat <<EOF > .env
           DOCKER_NAMESPACE=${{ env.DOCKER_NAMESPACE }}
-          IMAGE_TAG=${{ env.IMAGE_TAG }}
+          IMAGE_TAG=latest
           DB_USER=${{ secrets.DB_USER || 'admin' }}
           DB_PASSWORD=${{ secrets.DB_PASSWORD || 'postgres123' }}
           MONGO_USER=${{ secrets.MONGO_USER || 'admin' }}
