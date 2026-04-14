@@ -2,9 +2,9 @@ import { io, Socket } from 'socket.io-client'
 import { useAuthStore } from '@/stores/useAuthStore'
 
 // Socket.IO will automatically use current host and the path provided
-const SOCKET_URL = '';
+const SOCKET_URL = ''
 
-// Quản lý nhiều instance socket
+// Quản lý nhiều instance socket ok 
 let sockets: Record<string, Socket> = {};
 
 export const connectSocket = (path = '/socket.io') => {

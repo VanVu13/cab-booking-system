@@ -19,7 +19,7 @@ export default function RideTracking() {
     const [rideData, setRideData] = useState<any>(null)
     const [hasNavigated, setHasNavigated] = useState(false)
 
-    // Fetch initial booking status (for searching phase)
+    // Fetch initial booking status (for searching phase) ok
     const { data: booking } = useQuery({
         queryKey: ['booking', rideId],
         queryFn: () => bookingApi.getById(rideId!),

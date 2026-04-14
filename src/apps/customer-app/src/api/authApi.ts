@@ -1,6 +1,9 @@
 import { LoginPayload, RegisterPayload } from '@/features/auth/types'
 import axiosClient from './axiosClient'
+import axios from 'axios'
 import { useAuthStore } from '@/stores/useAuthStore'
+
+const CLIENT_API_URL = '/api'
 
 export const authApi = {
     login: async (data: LoginPayload) => {
@@ -17,7 +20,8 @@ export const authApi = {
         const refreshToken = useAuthStore.getState().refreshToken
         if (!refreshToken) throw new Error('No refresh token available')
 
-        const response = await axiosClient.post('/auth/refresh', { refreshToken })
+        // Use plain axios to avoid interceptor loop
+        const response = await axios.post(`${CLIENT_API_URL}/auth/refresh`, { refreshToken })
         return response.data
     },
 
@@ -35,3 +39,4 @@ export const authApi = {
         }
     }
 }
+

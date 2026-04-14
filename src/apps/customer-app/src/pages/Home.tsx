@@ -41,7 +41,7 @@ export default function Home() {
             setIsLoadingSearch(true)
             try {
                 // Biasing search to Ho Chi Minh City area
-                const response = await fetch(`http://localhost:3000/maps/search?q=${query}&format=json&addressdetails=1&limit=15&countrycodes=vn&viewbox=106.35,11.02,107.03,10.35&bounded=0`)
+                const response = await fetch(`/api/maps/search?q=${query}&format=json&addressdetails=1&limit=15&countrycodes=vn&viewbox=106.35,11.02,107.03,10.35&bounded=0`)
                 const data = await response.json()
                 setSuggestions(Array.isArray(data) ? data : [])
             } catch (error) {
@@ -65,7 +65,7 @@ export default function Home() {
             setMapCenter({ lat, lng })
             hasGeolocated.current = true; // Mark as done
 
-            fetch(`http://localhost:3000/maps/reverse-geocode?lat=${lat}&lon=${lng}&format=json&addressdetails=1`)
+            fetch(`/api/maps/reverse-geocode?lat=${lat}&lon=${lng}&format=json&addressdetails=1`)
                 .then(res => res.json())
                 .then(data => {
                     const initPickup = {
@@ -162,7 +162,7 @@ export default function Home() {
         if (!Number.isFinite(mapCenter.lat) || !Number.isFinite(mapCenter.lng)) return;
 
         setIsGeocoding(true)
-        fetch(`http://localhost:3000/maps/reverse-geocode?lat=${mapCenter.lat}&lon=${mapCenter.lng}&format=json&addressdetails=1`)
+        fetch(`/api/maps/reverse-geocode?lat=${mapCenter.lat}&lon=${mapCenter.lng}&format=json&addressdetails=1`)
             .then(res => {
                 // Guard: check that response is JSON, not XML/HTML error page
                 const contentType = res.headers.get('content-type') || '';

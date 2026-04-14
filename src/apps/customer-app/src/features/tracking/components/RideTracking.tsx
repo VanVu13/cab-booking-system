@@ -31,8 +31,8 @@ const RideTracking: React.FC<{ rideId: string }> = ({ rideId }) => {
     const interpolationDuration = 2000;
 
     useEffect(() => {
-        socketRef.current = io('http://localhost:3000', {
-            path: '/tracking-socket'
+        socketRef.current = io(window.location.origin, {
+            path: '/tracking-socket/'
         });
 
         // 1. Nhận thông tin route thực (OSRM)

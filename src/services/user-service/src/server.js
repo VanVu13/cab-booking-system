@@ -11,12 +11,9 @@ async function startServer() {
         await sequelize.authenticate();
         console.log('✓ Database connection has been established successfully.');
 
-        // Sync models (in development)
-        // Note: For production, use proper migrations
-        if (process.env.NODE_ENV === 'development') {
-            await sequelize.sync({ alter: true });
-            console.log('✓ Database models synchronized.');
-        }
+        // Sync models - create/alter tables if needed
+        await sequelize.sync({ alter: true });
+        console.log('✓ Database models synchronized.');
 
         app.listen(PORT, () => {
             console.log(`✓ User Service is running on port ${PORT}`);
