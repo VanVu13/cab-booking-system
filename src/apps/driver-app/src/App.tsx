@@ -4,6 +4,7 @@ import { router } from '@/routes'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { useState, useEffect } from 'react'
+import { useInitAuth } from '@/hooks/useInitAuth'
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -181,6 +182,9 @@ function PhoneFrame({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
+    // Proactively validate/refresh token on app startup
+    useInitAuth()
+
     return (
         <QueryClientProvider client={queryClient}>
             <PhoneFrame>
