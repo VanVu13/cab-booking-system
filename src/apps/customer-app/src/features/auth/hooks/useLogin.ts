@@ -29,7 +29,7 @@ export function useLogin() {
         },
         onError: (error: any) => {
             console.error("Lỗi đăng nhập:", error)
-            toast.error("Đăng nhập thất bại: " + (error.response?.data?.message || error.message), { toastId: 'login_error' })
+            toast.error(error.message || "Đăng nhập thất bại", { toastId: 'login_error' })
         }
     })
 }

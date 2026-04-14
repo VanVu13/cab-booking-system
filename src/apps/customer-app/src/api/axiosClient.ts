@@ -46,11 +46,26 @@ const processQueue = (error: unknown, token: string | null = null) => {
     failedQueue = []
 }
 
+// Extract real backend error message from response data
+// Backend returns: { error: 'message' } or { message: 'message' }
+const extractBackendMessage = (error: any): void => {
+    if (error.response?.data) {
+        const data = error.response.data
+        const backendMessage = data.error || data.message
+        if (backendMessage && typeof backendMessage === 'string') {
+            error.message = backendMessage
+        }
+    }
+}
+
 // Response interceptor - handle 401 with queue pattern
 axiosClient.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config
+
+        // Extract backend message for all errors
+        extractBackendMessage(error)
 
         // Skip 401 handling for auth routes (login fail ≠ token expired)
         if (originalRequest.url?.includes('/auth/login') || originalRequest.url?.includes('/auth/refresh')) {
@@ -97,7 +112,8 @@ axiosClient.interceptors.response.use(
                     processQueue(null, newAccessToken)
                     return axiosClient(originalRequest)
                 }
-            } catch (refreshError) {
+            } catch (refreshError: any) {
+                extractBackendMessage(refreshError)
                 processQueue(refreshError, null)
                 useAuthStore.getState().logout()
                 return Promise.reject(refreshError)

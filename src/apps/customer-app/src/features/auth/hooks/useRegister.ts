@@ -17,7 +17,7 @@ export function useRegister() {
         },
         onError: (error: any) => {
             console.error("Lỗi đăng ký:", error);
-            toast.error("Đăng ký thất bại: " + (error.response?.data?.message || error.message), { toastId: 'register_error' })
+            toast.error(error.message || "Đăng ký thất bại", { toastId: 'register_error' })
         }
     })
 }

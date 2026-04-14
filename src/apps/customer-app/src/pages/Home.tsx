@@ -5,6 +5,7 @@ import { MapPin, Navigation, Search, ArrowLeft, Check, MousePointer2 } from 'luc
 import { useBookingStore } from '@/features/booking/store/useBookingStore'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useNavigate } from 'react-router-dom'
+import axiosClient from '@/api/axiosClient'
 
 export default function Home() {
     const location = useGeoLocation()
@@ -41,9 +42,18 @@ export default function Home() {
             setIsLoadingSearch(true)
             try {
                 // Biasing search to Ho Chi Minh City area
-                const response = await fetch(`/api/maps/search?q=${query}&format=json&addressdetails=1&limit=15&countrycodes=vn&viewbox=106.35,11.02,107.03,10.35&bounded=0`)
-                const data = await response.json()
-                setSuggestions(Array.isArray(data) ? data : [])
+                const response = await axiosClient.get('/maps/search', {
+                    params: {
+                        q: query,
+                        format: 'json',
+                        addressdetails: 1,
+                        limit: 15,
+                        countrycodes: 'vn',
+                        viewbox: '106.35,11.02,107.03,10.35',
+                        bounded: 0
+                    }
+                })
+                setSuggestions(Array.isArray(response.data) ? response.data : [])
             } catch (error) {
                 console.error("Search error:", error)
             } finally {
@@ -65,13 +75,14 @@ export default function Home() {
             setMapCenter({ lat, lng })
             hasGeolocated.current = true; // Mark as done
 
-            fetch(`/api/maps/reverse-geocode?lat=${lat}&lon=${lng}&format=json&addressdetails=1`)
-                .then(res => res.json())
-                .then(data => {
+            axiosClient.get('/maps/reverse-geocode', {
+                    params: { lat, lon: lng, format: 'json', addressdetails: 1 }
+                })
+                .then(res => {
                     const initPickup = {
                         lat,
                         lng,
-                        address: data.display_name || "Vị trí của bạn"
+                        address: res.data.display_name || "Vị trí của bạn"
                     }
                     setPickup(initPickup)
                     setPickupInput(initPickup.address)
@@ -162,20 +173,14 @@ export default function Home() {
         if (!Number.isFinite(mapCenter.lat) || !Number.isFinite(mapCenter.lng)) return;
 
         setIsGeocoding(true)
-        fetch(`/api/maps/reverse-geocode?lat=${mapCenter.lat}&lon=${mapCenter.lng}&format=json&addressdetails=1`)
-            .then(res => {
-                // Guard: check that response is JSON, not XML/HTML error page
-                const contentType = res.headers.get('content-type') || '';
-                if (!contentType.includes('application/json')) {
-                    throw new Error(`Unexpected response type: ${contentType}`);
-                }
-                return res.json();
+        axiosClient.get('/maps/reverse-geocode', {
+                params: { lat: mapCenter.lat, lon: mapCenter.lng, format: 'json', addressdetails: 1 }
             })
-            .then(data => {
+            .then(res => {
                 setTempPoint({
                     lat: mapCenter.lat,
                     lng: mapCenter.lng,
-                    address: data.display_name || "Vị trí trên bản đồ"
+                    address: res.data.display_name || "Vị trí trên bản đồ"
                 })
             })
             .catch(err => {
