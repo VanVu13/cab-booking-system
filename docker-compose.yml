@@ -558,6 +558,7 @@ services:
     environment:
       PORT: 3011
       NODE_ENV: development
+      RABBITMQ_URL: amqp://rabbitmq:5672
       RIDE_SERVICE_URL: http://ride-service:3007
       DRIVER_SERVICE_URL: http://driver-service:3004
       ETA_SERVICE_URL: http://eta-service:3012

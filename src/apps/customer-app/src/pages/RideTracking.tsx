@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useSocketEvent, useSocket } from '@/hooks/useSocket'
 import Map from '@/components/map/Map'
@@ -18,6 +18,7 @@ export default function RideTracking() {
     const [driverInfo, setDriverInfo] = useState<any>(null)
     const [rideData, setRideData] = useState<any>(null)
     const [hasNavigated, setHasNavigated] = useState(false)
+    const subscribedDriverIdRef = useRef<string | null>(null)
 
     // Fetch initial booking status (for searching phase) ok
     const { data: booking } = useQuery({
@@ -46,7 +47,7 @@ export default function RideTracking() {
     const cancelBookingMutation = useMutation({
         mutationFn: () => bookingApi.cancel(rideId!),
         onSuccess: () => {
-            toast.info("Đã hủy tìm kiếm tài xế", { toastId: 'cancel_booking' })
+            toast.info("Đã hủy chuyến đi", { toastId: 'ride_status_update' })
             navigate('/')
         },
         onError: (error) => {
@@ -176,7 +177,15 @@ export default function RideTracking() {
         setDriverLocation(initialLoc)
 
         if (socket && data.driverId) {
+            // Unsubscribe from previous driver if exists and changed
+            if (subscribedDriverIdRef.current && subscribedDriverIdRef.current !== data.driverId) {
+                console.log('[RideTracking] Unsubscribing from PREVIOUS driver:', subscribedDriverIdRef.current)
+                socket.emit('unsubscribe:driver', { driverId: subscribedDriverIdRef.current })
+            }
+
             socket.emit('subscribe:driver', { driverId: data.driverId })
+            subscribedDriverIdRef.current = data.driverId
+
             // Join tracking service via Gateway Proxy /tracking-socket
             trackingSocket?.emit('ride:join_tracking', { rideId: rideId })
         }
@@ -192,15 +201,17 @@ export default function RideTracking() {
         toast.error("Không tìm thấy tài xế gần bạn", { toastId: 'match_failed' })
     })
 
-    // Listen for driver moving
     const handleLocationUpdate = (data: any) => {
-        // Accept updates if rideId matches, OR if this is the driver assigned to this ride
         const isCurrentRide = data.rideId === rideId;
-        const currentDriverId = driverInfo?.id || booking?.driverId || booking?.provisionalDriverId;
-        const isCurrentDriver = (currentDriverId && data.driverId === currentDriverId) || (data.driverId === driverInfo?.id);
+        // Search for current driver ID across possible data sources
+        const activeDriverId = driverInfo?.id || booking?.driverId || booking?.provisionalDriverId;
 
-        if (isCurrentRide || isCurrentDriver) {
+        console.log(`[RideTracking] LocUpdate: data.driverId=${data.driverId} | activeDriverId=${activeDriverId} | rideIdMatch=${isCurrentRide}`);
+
+        if (isCurrentRide && activeDriverId && data.driverId === activeDriverId) {
             setDriverLocation({ lat: data.lat, lng: data.lng })
+        } else if (isCurrentRide) {
+            console.warn(`[RideTracking] Blocked ghost location update! Ride: ${rideId}, GhostDriver: ${data.driverId}, ExpectedDriver: ${activeDriverId}`);
         }
     };
 
@@ -222,35 +233,49 @@ export default function RideTracking() {
             queryClient.setQueryData(['ride', rideId], (old: any) => old ? { ...old, status: newStatus } : old);
             queryClient.setQueryData(['booking', rideId], (old: any) => old ? { ...old, status: newStatus } : old);
 
-            if (newStatus === 'SEARCHING_DRIVER' || newStatus === 'MATCH_FAILED' || newStatus === 'CANCELLED') {
-                const lastStatus = status; // Get current state before setStatus
+            if (['SEARCHING_DRIVER', 'MATCH_FAILED', 'CANCELLED', 'PROPOSED'].includes(newStatus)) {
+                const lastStatus = status;
 
-                // CRITICAL: Wipe out ALL possible cache memory that holds outdated states
-                queryClient.cancelQueries({ queryKey: ['ride', rideId] });
-                queryClient.cancelQueries({ queryKey: ['booking', rideId] });
+                // For PROPOSED, we only wipe out if there's no driver payload yet (waiting for enrichment/acceptance)
+                // If it's a re-match, we MUST clear the old driver to avoid 'ghosts'
+                const isNewProposal = newStatus === 'PROPOSED' && (data.payload?.driverId !== driverInfo?.id);
 
-                queryClient.setQueryData(['ride', rideId], null);
-                queryClient.setQueryData(['booking', rideId], (old: any) =>
-                    old ? { ...old, status: newStatus, driverId: null, provisionalDriverId: null, driver: null } : { status: newStatus }
-                );
+                if (newStatus !== 'PROPOSED' || isNewProposal) {
+                    // CRITICAL: Wipe out ALL possible cache memory that holds outdated states
+                    queryClient.cancelQueries({ queryKey: ['ride', rideId] });
+                    queryClient.cancelQueries({ queryKey: ['booking', rideId] });
 
-                // Ask the server for fresh data right away, bypass stale cache
-                queryClient.invalidateQueries({ queryKey: ['booking', rideId], exact: true });
-                queryClient.invalidateQueries({ queryKey: ['ride', rideId], exact: true });
+                    queryClient.setQueryData(['ride', rideId], null);
+                    queryClient.setQueryData(['booking', rideId], (old: any) =>
+                        old ? { ...old, status: newStatus, driverId: null, provisionalDriverId: null, driver: null } : { status: newStatus }
+                    );
 
-                setDriverInfo(null);
-                setDriverLocation(null);
-                setRoute([]);
+                    // Ask the server for fresh data right away, bypass stale cache
+                    queryClient.invalidateQueries({ queryKey: ['booking', rideId], exact: true });
+                    queryClient.invalidateQueries({ queryKey: ['ride', rideId], exact: true });
+
+                    if (subscribedDriverIdRef.current) {
+                        console.log('[RideTracking] Clearing driver — Unsubscribing from:', subscribedDriverIdRef.current)
+                        socket?.emit('unsubscribe:driver', { driverId: subscribedDriverIdRef.current })
+                        subscribedDriverIdRef.current = null
+                    }
+
+                    setDriverInfo(null);
+                    setDriverLocation(null);
+                    setRoute([]);
+                }
 
                 if (newStatus === 'SEARCHING_DRIVER' && lastStatus !== 'SEARCHING_DRIVER') {
                     toast.info("Đang tiếp tục tìm tài xế khác...", { toastId: "search_another" });
                 }
 
                 if (newStatus === 'CANCELLED') {
-                    toast.error("Chuyến đi đã bị hủy", { toastId: 'ride_cancelled' })
+                    toast.error("Chuyến đi đã bị hủy", { toastId: 'ride_status_update' })
                     navigate('/')
                 }
-                return;
+
+                // If it's just a regular proposal, don't return early; let it fall through to update status
+                if (newStatus !== 'PROPOSED') return;
             }
 
             // Re-join tracking room on IN_PROGRESS to ensure we get the new route
@@ -312,6 +337,17 @@ export default function RideTracking() {
         return () => clearTimeout(timer)
     }, [status, hasNavigated, rideData, booking, rideId, navigate])
 
+    // Cleanup driver subscription on unmount
+    useEffect(() => {
+        return () => {
+            if (subscribedDriverIdRef.current && socket) {
+                console.log('[RideTracking] Unmounting — Unsubscribing from driver:', subscribedDriverIdRef.current)
+                socket.emit('unsubscribe:driver', { driverId: subscribedDriverIdRef.current })
+                subscribedDriverIdRef.current = null
+            }
+        }
+    }, [socket])
+
     const [route, setRoute] = useState<{ lat: number; lng: number }[]>([])
     const [realtimeInfo, setRealtimeInfo] = useState<{ distance?: number, duration?: number }>({})
 
@@ -354,6 +390,8 @@ export default function RideTracking() {
             <div className="flex-1 relative min-h-0">
                 <Map
                     center={driverLocation || rideData?.pickup || undefined}
+                    zoom={16}
+                    rideStatus={status}
                     markers={[
                         ...(rideData?.pickup ? [{ ...rideData.pickup, icon: 'pickup' as const }] : []),
                         ...(rideData?.drop ? [{ ...rideData.drop, icon: 'drop' as const }] : []),

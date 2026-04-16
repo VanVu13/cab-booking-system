@@ -53,13 +53,18 @@ interface MapProps {
     markers?: MapMarker[]
     route?: { lat: number; lng: number }[]
     onCenterChanged?: (center: { lat: number; lng: number }) => void
+    followLocation?: { lat: number; lng: number }
 }
 
 const parsePoint = (p: { lat: number; lng: number }): [number, number] => [p.lat, p.lng]
 
-function MapUpdater({ center, markers }: { center?: { lat: number; lng: number }; markers?: MapMarker[] }) {
+function MapUpdater({ center, markers, followLocation }: { 
+    center?: { lat: number; lng: number }; 
+    markers?: MapMarker[];
+    followLocation?: { lat: number; lng: number };
+}) {
     const map = useMap()
-    const [lastCenter, setLastCenter] = useState('')
+    const [lastPositionKey, setLastPositionKey] = useState('')
     const [ready, setReady] = useState(false)
 
     // Helper: check if map container has real dimensions (prevents Leaflet unproject NaN)
@@ -136,6 +141,23 @@ function MapUpdater({ center, markers }: { center?: { lat: number; lng: number }
     useEffect(() => {
         if (!ready) return
         try {
+            // Chế độ Focus: Luôn bám theo vị trí xe ở mức zoom cao
+            if (isValidLatLng(followLocation)) {
+                const key = `${followLocation.lat.toFixed(5)},${followLocation.lng.toFixed(5)}`
+                if (key !== lastPositionKey) {
+                    // Trong chế độ Focus, chúng ta muốn zoom cao để nhìn rõ đường (xem mức 18)
+                    const targetZoom = (map.getZoom() < 17) ? 18 : safeZoom();
+                    
+                    map.stop(); // Dừng các animation cũ để bám sát hơn
+                    map.setView([followLocation.lat, followLocation.lng], targetZoom, {
+                        animate: true,
+                        duration: 0.5
+                    });
+                    setLastPositionKey(key)
+                }
+                return; // Không thực hiện fitBounds nếu đang ở chế độ follow
+            }
+
             if (markers && markers.length > 0) {
                 const valid = markers.filter(isValidLatLng)
                 if (valid.length > 1) {
@@ -148,15 +170,16 @@ function MapUpdater({ center, markers }: { center?: { lat: number; lng: number }
                 }
             } else if (isValidLatLng(center)) {
                 const key = `${center.lat.toFixed(4)},${center.lng.toFixed(4)}`
-                if (key !== lastCenter) {
-                    safeFlyTo([center.lat, center.lng], safeZoom())
-                    setLastCenter(key)
+                if (key !== lastPositionKey) {
+                    const targetZoom = (map.getZoom() < 15) ? 17 : safeZoom();
+                    safeFlyTo([center.lat, center.lng], targetZoom)
+                    setLastPositionKey(key)
                 }
             }
         } catch (e) {
             console.warn('[MapUpdater] Error (suppressed):', e)
         }
-    }, [center, markers, map, lastCenter, ready])
+    }, [center, markers, map, lastPositionKey, ready, followLocation])
 
     useMapEvents({
         moveend: () => { /* optional */ }
@@ -167,9 +190,10 @@ function MapUpdater({ center, markers }: { center?: { lat: number; lng: number }
 
 export default function Map({
     center = { lat: 10.7769, lng: 106.7009 },
-    zoom = 14,
+    zoom = 17,
     markers = [],
     route = [],
+    followLocation,
 }: MapProps) {
     const [mounted, setMounted] = useState(false)
     const containerRef = useRef<HTMLDivElement>(null)
@@ -217,6 +241,7 @@ export default function Map({
                 <MapUpdater
                     center={validMarkers.length === 1 ? validMarkers[0] : (validMarkers.length === 0 ? (isValidLatLng(center) ? center : undefined) : undefined)}
                     markers={validMarkers.length > 1 ? validMarkers : undefined}
+                    followLocation={followLocation}
                 />
 
                 {validMarkers.map((marker, i) => {

@@ -45,6 +45,7 @@ interface MapProps {
     zoom?: number;
     markers?: { lat: number; lng: number; icon?: 'cab' | 'bike' | 'pickup' | 'drop' }[];
     route?: { lat: number; lng: number }[];
+    rideStatus?: string;
     onIdle?: () => void;
     onCenterChanged?: (center: { lat: number, lng: number }) => void;
     showCenterPin?: boolean;
@@ -100,17 +101,19 @@ const parsePoint = (p: any): [number, number] | null => {
     return null;
 };
 
-function MapUpdater({ center, zoom, markers, onCenterChanged, onIdle }: {
+function MapUpdater({ center, zoom, markers, rideStatus, onCenterChanged, onIdle }: {
     center?: { lat: number; lng: number },
     zoom?: number,
     markers?: { lat: number; lng: number }[],
+    rideStatus?: string,
     onCenterChanged?: (center: { lat: number, lng: number }) => void,
     onIdle?: () => void
 }) {
     const map = useMap();
     const [lastJumpCoord, setLastJumpCoord] = useState<string>("");
 
-    const [lastMarkersCount, setLastMarkersCount] = useState(0);
+    const [lastMarkersHash, setLastMarkersHash] = useState("");
+    const [lastStatus, setLastStatus] = useState<string | undefined>();
 
     useEffect(() => {
         // Guard: ensure map instance is available and container is ready
@@ -130,17 +133,35 @@ function MapUpdater({ center, zoom, markers, onCenterChanged, onIdle }: {
                 return; // Skip normal logic this cycle, next render will handle properly
             }
 
+            const markersHash = markers?.map(m => `${m.lat.toFixed(4)},${m.lng.toFixed(4)}`).join('|') || "";
+            const statusChanged = rideStatus !== lastStatus;
+
             if (markers && markers.length > 1) {
-                // Chỉ fitBounds nếu số lượng marker thay đổi
-                if (markers.length !== lastMarkersCount) {
+                // Trigger fitBounds if:
+                // 1. Status changed (e.g. from SEARCHING to ACCEPTED)
+                // 2. Markers moved significantly AND it's a small set of markers (Driver/Pickup/Drop)
+                // 3. Number of markers changed (e.g. driver assigned)
+                const markersMoved = markersHash !== lastMarkersHash;
+                
+                if (statusChanged || markersMoved) {
                     const points = markers.map(parsePoint).filter((p): p is [number, number] => p !== null);
                     if (points.length > 1) {
                         const bounds = L.latLngBounds(points);
                         if (bounds.isValid()) {
-                            map.stop(); // Cancel pending animations before fitBounds
-                            map.fitBounds(bounds, { padding: [80, 80], maxZoom: 18 });
+                            // If it's just driver moving, use flyToBounds or just fitBounds
+                            // We don't want to fitBounds on EVERY tiny movement if there's many points (route)
+                            // But for < 5 points, it's usually the key points we want to see.
+                            if (statusChanged || markers.length < 5 || (markersMoved && markers.length !== lastMarkersHash.split('|').length)) {
+                                map.stop();
+                                map.fitBounds(bounds, { 
+                                    padding: [50, 50], 
+                                    maxZoom: statusChanged ? 16 : 18,
+                                    animate: true 
+                                });
+                            }
                         }
-                        setLastMarkersCount(markers.length);
+                        setLastMarkersHash(markersHash);
+                        if (statusChanged) setLastStatus(rideStatus);
                     }
                 }
             } else if (isValidCenter(center)) {
@@ -151,12 +172,17 @@ function MapUpdater({ center, zoom, markers, onCenterChanged, onIdle }: {
                     Math.pow(current.lng - center.lng, 2)
                 );
 
-                // Only move if this is a NEW coordinate jump and distance is meaningful (> ~50m)
                 if (coordKey !== lastJumpCoord && dist > 0.0005) {
-                    map.stop(); // Cancel any in-progress flyTo animation first
-                    map.setView([center.lat, center.lng], zoom || map.getZoom(), {
+                    map.stop(); // Cancel any in-progress animations
+                    
+                    // SMART ZOOM: If we are at a very low zoom (city level), 
+                    // and moving to a specific point, zoom in to street level (16)
+                    const targetZoom = (map.getZoom() < 15) ? 16 : (zoom || map.getZoom());
+                    
+                    map.flyTo([center.lat, center.lng], targetZoom, {
                         animate: true,
-                        duration: 0.8
+                        duration: 1.5,
+                        easeLinearity: 0.25
                     });
                     setLastJumpCoord(coordKey);
                 }
@@ -166,10 +192,10 @@ function MapUpdater({ center, zoom, markers, onCenterChanged, onIdle }: {
             // Last resort: try to recover map to a safe state
             try {
                 map.stop();
-                map.setView([FALLBACK_CENTER.lat, FALLBACK_CENTER.lng], 13);
+                map.setView([FALLBACK_CENTER.lat, FALLBACK_CENTER.lng], 16);
             } catch (_) { /* ignore recovery failure */ }
         }
-    }, [center, zoom, markers, map, lastJumpCoord]);
+    }, [center, zoom, markers, map, lastJumpCoord, rideStatus, lastStatus, lastMarkersHash]);
 
     useMapEvents({
         moveend: () => {
@@ -192,7 +218,7 @@ function MapUpdater({ center, zoom, markers, onCenterChanged, onIdle }: {
     return null;
 }
 
-export default function Map({ center = FALLBACK_CENTER, zoom = 13, markers = [], route = [], onIdle, onCenterChanged, showCenterPin }: MapProps) {
+export default function Map({ center = FALLBACK_CENTER, zoom = 16, markers = [], route = [], rideStatus, onIdle, onCenterChanged, showCenterPin }: MapProps) {
     const [isMounted, setIsMounted] = useState(false);
 
     useEffect(() => {
@@ -231,6 +257,7 @@ export default function Map({ center = FALLBACK_CENTER, zoom = 13, markers = [],
                     center={validMarkers.length > 0 ? undefined : safeCenter}
                     zoom={zoom}
                     markers={route.length > 0 ? route : (validMarkers.length > 1 ? validMarkers : undefined)}
+                    rideStatus={rideStatus}
                     onCenterChanged={onCenterChanged}
                     onIdle={onIdle}
                 />

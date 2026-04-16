@@ -67,6 +67,7 @@ async function publishRideCancelled(data) {
     const event = {
         type: 'RideCancelled',
         rideId: data.rideId,
+        userId: data.userId,
         driverId: data.driverId,
         reason: data.reason || 'CUSTOMER_CANCELLED',
         timestamp: new Date().toISOString()

@@ -80,15 +80,32 @@ async function startConsuming() {
                         }
 
                         // Use explicit status from payload if available, otherwise derive from routing key
+                        // Normalize TERMINOLOGY: 'assigned' from AI Matching should be 'PROPOSED' for UI/Customer (awaiting acceptance)
+                        let derivedStatus = eventData.status;
+                        if (!derivedStatus) {
+                            const suffix = type.split('.')[1].toUpperCase();
+                            derivedStatus = suffix === 'ASSIGNED' ? 'PROPOSED' : suffix;
+                        }
+
                         // Normalize STARTED -> IN_PROGRESS for consistency across apps
-                        let derivedStatus = eventData.status || type.split('.')[1].toUpperCase();
                         if (derivedStatus === 'STARTED') derivedStatus = 'IN_PROGRESS';
 
-                        broadcastToRoom(eventData.userId, 'ride:status_update', {
+                        // Prepare the update payload
+                        const statusUpdatePayload = {
                             rideId: eventData.rideId || eventData.bookingId || eventData.id,
                             status: derivedStatus,
                             payload: eventData
-                        });
+                        };
+
+                        // 1. Notify the Customer (userId)
+                        if (eventData.userId) {
+                            broadcastToRoom(eventData.userId, 'ride:status_update', statusUpdatePayload);
+                        }
+
+                        // 2. Notify the Driver (driverId) - essential for cancellations and started rides
+                        if (eventData.driverId) {
+                            broadcastToRoom(eventData.driverId, 'ride:status_update', statusUpdatePayload);
+                        }
 
                         // Specific handling for driver match (initializes tracking map and driver info for customer)
                         if (type === 'ride.assigned') {

@@ -102,10 +102,18 @@ function initRouteService(server, app) {
         const { routingKey } = data;
 
         if (routingKey === 'driver.location_updated') {
-            const { driverId, lat, lng } = data;
+            const { driverId, lat, lng, rideId: eventRideId } = data;
             const rideId = activeDriverRides.get(driverId);
 
             if (rideId) {
+                // Self-cleanup logic: If event specifically provides a rideId that doesn't match our mapping, 
+                // or if we suspect this mapping is stale, we purge it to stop ghosting.
+                if (eventRideId && eventRideId !== rideId) {
+                    console.warn(`[Tracking] Detected ghost mapping for driver ${driverId}. Expected ride ${rideId} but got update for ${eventRideId}. Purging mapping.`);
+                    activeDriverRides.delete(driverId);
+                    return;
+                }
+
                 // 1. Broadcast raw location for smooth car movement
                 io.to(rideId).emit('driver:location_update', {
                     rideId, driverId, lat, lng, timestamp: new Date()
@@ -129,13 +137,16 @@ function initRouteService(server, app) {
             // Always force recalculate and emit on status changes
             await calculateAndEmitRoute(rideId, true, eventStatus);
 
-            // Cleanup on completion
-            if (['COMPLETED', 'CANCELLED'].includes(eventStatus)) {
-                const ride = await getRideDetails(rideId);
-                if (ride && ride.driverId) {
-                    activeDriverRides.delete(ride.driverId);
-                    lastRouteCalculation.delete(rideId);
+            // Cleanup on completion or rejection to stop 'ghost' location broadcasts
+            if (['COMPLETED', 'CANCELLED', 'REJECTED', 'MATCH_FAILED', 'SEARCHING_DRIVER'].includes(eventStatus)) {
+                // Find and remove the mapping for the driver who was on this ride
+                for (const [dId, rId] of activeDriverRides.entries()) {
+                    if (rId === rideId) {
+                        activeDriverRides.delete(dId);
+                        console.log(`[Tracking] Cleaned up mapping for driver ${dId} from ride ${rideId} (Status: ${eventStatus})`);
+                    }
                 }
+                lastRouteCalculation.delete(rideId);
             }
         }
     });

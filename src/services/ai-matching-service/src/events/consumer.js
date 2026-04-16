@@ -1,5 +1,6 @@
 const { getChannel, getQueueName, getExchangeName } = require('../config/rabbitmq');
 const { findNearbyDrivers, selectBestDriver, validateContext } = require('../services/driverClient');
+const { enrichDriversWithTools } = require('../services/toolClient');
 const { publishRideAssigned, publishRideMatchFailed, publishRideRejected } = require('./producer');
 const { getBooking } = require('../services/bookingClient');
 const { logContextMissing, logMatchFailed } = require('../services/decisionLogger');
@@ -138,8 +139,12 @@ async function handleRideCreated(event) {
         return;
     }
 
-    // 2. Select best driver (now uses multi-factor ranking with decision logging)
-    const selectedDriver = selectBestDriver(drivers, { rideId });
+    // 2. AGENT STEP: Enrich drivers with real-world tool data (ETA & Pricing)
+    // Goal: Meet requirements 53 (Balance ETA/Price) and 54 (Call Tools)
+    const enrichedDrivers = await enrichDriversWithTools(drivers, pickup, vehicleType || 'SEDAN');
+
+    // 3. Select best driver (now uses multi-factor ranking with decision logging)
+    const selectedDriver = selectBestDriver(enrichedDrivers, { rideId });
     if (!selectedDriver) {
         logMatchFailed(rideId, 'SCORING_FAILED');
         await publishRideMatchFailed({ rideId, userId, reason: 'SCORING_FAILED' });
@@ -263,7 +268,10 @@ async function handleRideRejected(event) {
         return;
     }
 
-    const selectedDriver = selectBestDriver(drivers);
+    // AGENT STEP: Enrich for retry matching as well
+    const enrichedDrivers = await enrichDriversWithTools(drivers, pickup, event.vehicleType || 'SEDAN');
+
+    const selectedDriver = selectBestDriver(enrichedDrivers);
     console.log(`[MATCHING] Re-assigned to driver: ${selectedDriver.driverId}`);
 
     await publishRideAssigned({

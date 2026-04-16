@@ -1,6 +1,6 @@
 const amqp = require('amqplib');
 
-const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost:5672';
+const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://rabbitmq:5672';
 const EXCHANGE_NAME = 'ride.topic';
 
 let connection = null;

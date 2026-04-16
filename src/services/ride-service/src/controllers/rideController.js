@@ -28,8 +28,8 @@ async function ensureRideRecord(rideId, driverId = null) {
             ride = new Ride({
                 rideId: booking.bookingId, // Use bookingId as the primary identifier
                 bookingId: booking.bookingId,
-                userId: booking.userId, // Critical fix: Map userId from booking
-                driverId: booking.driverId || (driverId !== 'SYSTEM_TRACKING' ? driverId : null) || 'TBD',
+                userId: booking.userId,
+                driverId: (booking.driverId && booking.driverId !== 'TBD') ? booking.driverId : (driverId !== 'SYSTEM_TRACKING' ? driverId : null),
                 pickup: booking.pickup,
                 drop: booking.drop,
                 pickupLat: booking.pickup ? booking.pickup.lat : 0,
@@ -38,8 +38,8 @@ async function ensureRideRecord(rideId, driverId = null) {
                 destLng: booking.drop ? booking.drop.lng : 0,
                 vehicleType: booking.vehicleType,
                 paymentMethod: booking.paymentMethod || 'CASH',
-                // Status mapping: PROPOSED/SEARCHING -> ASSIGNED. Keep others if valid.
-                status: ['PROPOSED', 'SEARCHING_DRIVER'].includes(booking.status) ? 'ASSIGNED' : booking.status,
+                // Status mapping: Keep original if it's PROPOSED or SEARCHING_DRIVER
+                status: booking.status,
                 estimatedPrice: booking.estimatedPrice
             });
             await ride.save();
@@ -416,7 +416,7 @@ async function getRideById(req, res) {
             if (ride.userId) {
                 passengerProfile = await getUserProfile(ride.userId, 'PASSENGER');
             }
-            if (ride.driverId && ride.driverId !== 'TBD') {
+            if (ride.driverId && ride.driverId !== 'TBD' && ride.driverId !== 'null' && ride.driverId !== 'undefined') {
                 console.log(`[RideController] Fetching profile for driver: ${ride.driverId}`);
                 driverProfile = await getUserProfile(ride.driverId, 'DRIVER');
                 console.log(`[RideController] Driver profile result:`, driverProfile ? 'Found' : 'Not Found', driverProfile);

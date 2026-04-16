@@ -18,6 +18,7 @@ async function startConsuming() {
 
     // Bind to relevant events
     await channel.bindQueue(queue, exchange, 'ride.assigned');
+    await channel.bindQueue(queue, exchange, 'ride.accepted');
     await channel.bindQueue(queue, exchange, 'ride.arrived');
     await channel.bindQueue(queue, exchange, 'ride.started');
     await channel.bindQueue(queue, exchange, 'ride.completed');
@@ -37,6 +38,8 @@ async function startConsuming() {
 
             if (routingKey === 'ride.assigned') {
                 await handleRideAssigned(event);
+            } else if (routingKey === 'ride.accepted') {
+                await handleStatusUpdate(event, 'ASSIGNED');
             } else if (routingKey === 'ride.arrived') {
                 await handleStatusUpdate(event, 'ARRIVED');
             } else if (routingKey === 'ride.started') {
@@ -67,13 +70,13 @@ async function handleRideAssigned(event) {
     // Check if ride already exists (idempotency/re-assignment)
     let existingRide = await Ride.findOne({ rideId });
     if (existingRide) {
-        if (existingRide.status === 'ASSIGNED' && existingRide.driverId === driverId) {
-            console.log(`[RIDE] Ride ${rideId} already exists and assigned to same driver, skipping. Status: ${existingRide.status}`);
+        if (existingRide.status === 'PROPOSED' && existingRide.driverId === driverId) {
+            console.log(`[RIDE] Ride ${rideId} already exists and proposed to same driver, skipping. Status: ${existingRide.status}`);
             return;
         }
         console.log(`[RIDE] Ride ${rideId} exists, updating for new assignment. Old Status: ${existingRide.status}`);
         existingRide.driverId = driverId;
-        existingRide.status = 'ASSIGNED';
+        existingRide.status = 'PROPOSED';
         existingRide.updatedAt = new Date();
         await existingRide.save();
         return;
@@ -94,7 +97,7 @@ async function handleRideAssigned(event) {
         estimatedPrice,
         vehicleType: vehicleType || 'SEDAN',
         paymentMethod: event.paymentMethod || 'CASH',
-        status: 'ASSIGNED'
+        status: 'PROPOSED'
     });
 
     try {

@@ -85,6 +85,26 @@ function connect() {
         resetSimulator();
     });
 
+    socket.on('ride:status_update', (payload) => {
+        const { rideId, status, driverId } = payload;
+        console.log(`[SIMULATOR] Status update received: ${rideId} -> ${status} (Driver: ${driverId})`);
+
+        if (rideId === currentRide?.rideId && driverId === DRIVER_ID) {
+            if (['ASSIGNED', 'DRIVER_ASSIGNED', 'ACCEPTED'].includes(status) && !isMoving) {
+                console.log(`✅ [SIMULATOR] Confirmation received! Starting movement to pickup.`);
+                simulateMovement(currentRide.pickup, () => {
+                    console.log(`\n🏁 [SIMULATOR] Đã đến điểm đón!`);
+                    announceArrival(rideId, () => {
+                        setTimeout(() => startRide(rideId, currentRide.drop), 2000);
+                    });
+                });
+            }
+        } else if (rideId === currentRide?.rideId && driverId !== DRIVER_ID) {
+            console.warn(`⚠️ [SIMULATOR] Ride ${rideId} was assigned elsewhere (${driverId}). Resetting.`);
+            resetSimulator();
+        }
+    });
+
     socket.on('connection:ack', (data) => {
         console.log(`[SIMULATOR] ACK: ${JSON.stringify(data)}`);
     });
@@ -133,15 +153,7 @@ async function handleRideRequest(payload) {
             userId
         });
 
-        // Bắt đầu di chuyển tới điểm đón
-        const lockedRideId = rideId;
-        simulateMovement(pickup, () => {
-            console.log(`\n🏁 [SIMULATOR] Đã đến điểm đón cho chuyến: ${lockedRideId}!`);
-            announceArrival(lockedRideId, () => {
-                // Đợi 2s khách lên xe rồi bắt đầu trip
-                setTimeout(() => startRide(lockedRideId, drop), 2000);
-            });
-        });
+        console.log(`⏳ [SIMULATOR] Chờ xác nhận từ server cho chuyến ${rideId}...`);
     }, 2500);
 }
 
@@ -282,6 +294,14 @@ async function simulateMovement(target, onArrived) {
     console.log(`\n🚗 [SIMULATOR] Bắt đầu di chuyển bám đường (${(totalRouteDistance / 1000).toFixed(2)} km, v=${SPEED_KMH * SPEED_MULTIPLIER} km/h)`);
 
     const moveInterval = setInterval(() => {
+        // SAFETY CHECK: If ride was cancelled or reset, STOP IMMEDIATELY
+        if (!currentRide || !isMoving) {
+            console.log(`\n🛑 [SIMULATOR] Movement aborted for ${target.address || 'target'}`);
+            clearInterval(moveInterval);
+            isMoving = false;
+            return;
+        }
+
         traveledDistance += stepDistance;
 
         if (traveledDistance >= totalRouteDistance) {
@@ -346,7 +366,11 @@ function sendMessage(event, payload) {
 }
 
 function resetSimulator() {
-    if (timers.request) clearTimeout(timers.request);
+    console.log('[SIMULATOR] Resetting state...');
+    if (timers.request) {
+        clearTimeout(timers.request);
+        timers.request = null;
+    }
     currentRide = null;
     isMoving = false;
     // Chỉnh trạng thái về Available sau khi xong chuyến

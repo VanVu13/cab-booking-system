@@ -52,7 +52,7 @@ const STATUS_CONFIG: Record<NavStatus, {
 export default function RideNavigationPage() {
     const { rideId } = useParams<{ rideId: string }>()
     const navigate = useNavigate()
-    const { currentRide, updateRideStatus, setDriverStatus, location: myLocation } = useDriverStore()
+    const { currentRide, updateRideStatus, setCurrentRide, setDriverStatus, location: myLocation } = useDriverStore()
     const [status, setStatus] = useState<NavStatus>((currentRide?.status as NavStatus) || 'ACCEPTED')
     const [loading, setLoading] = useState(false)
     const [route, setRoute] = useState<{ lat: number; lng: number }[]>([])
@@ -88,9 +88,20 @@ export default function RideNavigationPage() {
 
     // Listen for status updates
     useSocketEvent('ride:status_update', (data: unknown) => {
-        const update = data as { rideId?: string; status?: string }
-        if (update.rideId === rideId && update.status) {
-            const newStatus = update.status as NavStatus
+        const update = data as { rideId?: string; status?: string; payload?: { status?: string, rideId?: string } }
+        const rId = update.rideId || update.payload?.rideId
+        const s = update.status || update.payload?.status
+
+        if (rId === rideId && s) {
+            if (s === 'CANCELLED') {
+                toast.error('Chuyến đi đã bị khách hàng hủy')
+                setCurrentRide(null) // Reset store state by clearing current ride
+                setDriverStatus('ONLINE')   // Make driver available again
+                navigate('/')
+                return
+            }
+
+            const newStatus = s as NavStatus
             setStatus(newStatus)
             updateRideStatus(newStatus)
         }
@@ -99,6 +110,10 @@ export default function RideNavigationPage() {
     const handleAction = async () => {
         if (!rideId || loading) return
         const config = STATUS_CONFIG[status]
+        if (!config) {
+            console.error('[DriverNav] Invalid status:', status)
+            return
+        }
         setLoading(true)
 
         try {
@@ -142,7 +157,7 @@ export default function RideNavigationPage() {
         console.log('Next status:', config.nextStatus)
     }
 
-    const config = STATUS_CONFIG[status]
+    const config = STATUS_CONFIG[status] || STATUS_CONFIG.ACCEPTED
     // Get driver vehicle type from auth store
     const { user } = useAuthStore()
     const ride = currentRide;
@@ -159,18 +174,22 @@ export default function RideNavigationPage() {
     // Filter out invalid markers to prevent Leaflet crash
     const markers = rawMarkers.filter(m => typeof m.lat === 'number' && typeof m.lng === 'number' && !isNaN(m.lat) && !isNaN(m.lng));
 
+    const [isFocusMode, setIsFocusMode] = useState(true);
+
     return (
         <div className="relative w-full h-full flex flex-col">
             {/* Map */}
             <div className="flex-1 relative">
                 <Map
                     center={myLocation || ride?.pickup || undefined}
+                    zoom={17}
                     markers={markers}
                     route={route}
+                    followLocation={isFocusMode ? myLocation || undefined : undefined}
                 />
 
                 {/* Status badge on map */}
-                <div className="absolute top-4 left-4 right-4 z-[1000]">
+                <div className="absolute top-4 left-4 right-4 z-[1000] flex justify-between items-start">
                     <div className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl shadow-lg text-white text-sm font-bold ${status === 'ACCEPTED' ? 'bg-blue-500' :
                         status === 'ARRIVED' ? 'bg-primary' :
                             status === 'IN_PROGRESS' ? 'bg-warning' : 'bg-gray-500'
@@ -178,6 +197,19 @@ export default function RideNavigationPage() {
                         <Navigation className="w-4 h-4" />
                         {config.label}
                     </div>
+
+                    {/* Toggle Focus Mode Button */}
+                    <button 
+                        onClick={() => setIsFocusMode(!isFocusMode)}
+                        className={`p-3 rounded-2xl shadow-xl transition-all border ${
+                            isFocusMode 
+                            ? 'bg-primary text-white border-primary-dark scale-110' 
+                            : 'bg-white text-gray-600 border-gray-100'
+                        }`}
+                        title={isFocusMode ? "Chế độ: Tập trung" : "Chế độ: Tổng quan"}
+                    >
+                        <Navigation className={`w-5 h-5 ${isFocusMode ? 'fill-current' : ''}`} />
+                    </button>
                 </div>
             </div>
 
@@ -216,8 +248,8 @@ export default function RideNavigationPage() {
                             <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
                             <span className="text-gray-600 truncate">
                                 {status === 'ACCEPTED'
-                                    ? (ride.pickup.address || 'Điểm đón')
-                                    : (ride.drop.address || 'Điểm trả')}
+                                    ? (ride.pickup?.address || 'Điểm đón')
+                                    : (ride.drop?.address || 'Điểm trả')}
                             </span>
                             <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0 ml-auto" />
                         </div>

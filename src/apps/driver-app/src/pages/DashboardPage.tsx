@@ -274,6 +274,19 @@ export default function DashboardPage() {
         }
     }, '/ws')
 
+    // Listen for ride cancellation while request is pending
+    useSocketEvent('ride:status_update', (data: any) => {
+        const update = data as { rideId?: string; status?: string; payload?: { rideId?: string, status?: string } }
+        const rId = update.rideId || update.payload?.rideId
+        const s = update.status || update.payload?.status
+
+        if (incomingRide && rId === incomingRide.rideId && s === 'CANCELLED') {
+            console.log('[Dashboard] Incoming ride was cancelled by customer')
+            setIncomingRide(null)
+            toast.info('Khách hàng đã hủy yêu cầu chuyến đi')
+        }
+    })
+
     const handleToggleStatus = async () => {
         setTogglingStatus(true)
         const newOnline = driverStatus === 'OFFLINE'
@@ -354,7 +367,7 @@ export default function DashboardPage() {
             <div className="flex-1 relative">
                 <Map
                     center={mapCenter}
-                    zoom={15}
+                    zoom={17}
                     markers={
                         location && typeof location.lat === 'number' && !isNaN(location.lat) && typeof location.lng === 'number' && !isNaN(location.lng)
                             ? [{ ...location, icon: markerIcon }]

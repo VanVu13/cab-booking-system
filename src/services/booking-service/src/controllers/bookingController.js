@@ -316,6 +316,7 @@ async function cancelBooking(req, res) {
         // Publish ride.cancelled event universally to notify AI-matching and driver-service
         await publishRideCancelled({
             rideId: booking.bookingId,
+            userId: booking.userId,
             driverId: booking.driverId || null,
             reason: 'CUSTOMER_CANCELLED'
         });

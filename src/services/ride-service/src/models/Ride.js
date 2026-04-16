@@ -39,8 +39,8 @@ const rideSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['ASSIGNED', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
-        default: 'ASSIGNED'
+        enum: ['PROPOSED', 'ASSIGNED', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
+        default: 'PROPOSED'
     },
     paymentMethod: {
         type: String,

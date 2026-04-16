@@ -53,6 +53,15 @@ function initWebSocket(server) {
             console.log(`[Socket.IO] Client ${userId} subscribed to ${driverRoom}`);
         });
 
+        socket.on('unsubscribe:driver', (data) => {
+            const { driverId } = data;
+            if (driverId) {
+                const driverRoom = `driver:${driverId}`;
+                socket.leave(driverRoom);
+                console.log(`[Socket.IO] Client ${userId} unsubscribed from ${driverRoom}`);
+            }
+        });
+
         socket.on('disconnect', () => {
             console.log(`[Socket.IO] Client disconnected: ${userId}`);
         });
