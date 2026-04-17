@@ -9,7 +9,7 @@ const { setupRoutes } = require('./routes');
 
 const app = express();
 
-// Correlation ID Middleware (Traceability)
+// 1. Correlation ID Middleware (Traceability) - MUST BE FIRST
 app.use((req, res, next) => {
     const correlationId = req.headers['x-correlation-id'] || `cid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     req.correlationId = correlationId;
@@ -17,10 +17,23 @@ app.use((req, res, next) => {
     next();
 });
 
-// Security
-app.use(helmet());
+// 2. Logging - IMMEDIATELY AFTER CORRELATION ID
+app.use(morgan('dev'));
+app.use((req, res, next) => {
+    console.log(`[GATEWAY REQUEST] ${req.method} ${req.url}`);
+    next();
+});
 
-// Body parsing (IMPORTANT)
+// 3. Security & CORS
+app.use(helmet());
+app.use(cors({
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-driver-id', 'x-user-id']
+}));
+
+// 4. Body parsing
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
@@ -31,20 +44,12 @@ app.use((err, req, res, next) => {
     }
     next(err);
 });
-// CORS - Allow ALL for debugging
-app.use(cors({
-    origin: true, // Reflects the request origin
-    credentials: true
-}));
+// CORS is now globally defined at the top
 
-// Logging
-app.use(morgan('dev'));
 app.use((req, res, next) => {
-    console.log(`[GATEWAY REQUEST] ${req.method} ${req.url}`);
-    next();
-});
-app.use((req, res, next) => {
-    console.log(`[GATEWAY DEBUG] ${req.method} ${req.originalUrl} -> ${req.url}`);
+    if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
+        console.log(`[GATEWAY BODY DEBUG] ${req.method} ${req.originalUrl} - Body Keys:`, Object.keys(req.body || {}));
+    }
     next();
 });
 
